@@ -1,0 +1,28 @@
+```gitignore
+# Java / Spring Boot
+target/
+*.class
+*.jar
+*.war
+
+# Maven
+.mvn/
+!mvnw
+!mvnw.cmd
+
+# React / Node
+node_modules/
+dist/
+build/
+.env
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+
+# Logs
+*.log

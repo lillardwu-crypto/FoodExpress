@@ -1,24 +1,30 @@
-package com.foodexpress.controller;
+package com.foodexpress.service;
 
 import com.foodexpress.entity.Restaurant;
 import com.foodexpress.entity.RestaurantStatus;
 import com.foodexpress.repository.RestaurantRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-@RestController
-@RequestMapping("/test")
+@Service
 @RequiredArgsConstructor
-public class TestController {
+public class RestaurantService {
 
     private final RestaurantRepository restaurantRepository;
 
-    @PostMapping("/restaurants")
-    public Restaurant createRestaurant() {
+    public Restaurant createSampleRestaurant() {
+
+        List<Restaurant> restaurants =
+                restaurantRepository.findAll();
+
+        if (!restaurants.isEmpty()) {
+            return restaurants.get(0);
+        }
+
         Restaurant restaurant = Restaurant.builder()
                 .name("Boston Burger")
                 .address("123 Main St, Boston, MA")
@@ -33,8 +39,7 @@ public class TestController {
         return restaurantRepository.save(restaurant);
     }
 
-    @GetMapping("/restaurants")
-    public List<Restaurant> getRestaurants() {
+    public List<Restaurant> getAllRestaurants() {
         return restaurantRepository.findAll();
     }
 }

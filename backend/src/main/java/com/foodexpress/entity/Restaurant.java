@@ -1,5 +1,6 @@
 package com.foodexpress.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -38,6 +39,7 @@ public class Restaurant {
 
     private LocalDateTime createdAt;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "restaurant")
     private List<MenuItem> menuItems;
 

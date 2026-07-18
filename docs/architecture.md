@@ -87,23 +87,37 @@ Docker Compose
 
 # 3. 整体架构图
 
-```text
-+----------------------+
-|      React UI        |
-+----------------------+
-           |
-           |
-           v
-+----------------------+
-| Spring Boot REST API |
-+----------------------+
-           |
-           |
-           v
-+----------------------+
-|        MySQL         |
-+----------------------+
-```
+项目简介改成：
+
+FoodExpress 是一个基于地图的全栈外卖平台，参考 Uber Eats 和 Google Maps 的交互方式设计。
+
+整体架构图可以改成：
+
+React Frontend
+  ├── Map Page
+  ├── Restaurant List
+  ├── Menu Page
+  └── Cart / Order Page
+        |
+        v
+Spring Boot REST API
+        |
+        v
+MySQL
+
+增加一个章节：
+
+# Map-based Restaurant Discovery
+
+前端地图页面会请求：
+
+GET /api/restaurants/nearby?lat={lat}&lng={lng}&radius={radius}
+
+后端根据用户当前位置查询附近餐厅，并返回餐厅坐标。
+
+React 使用这些坐标在地图上展示餐厅 marker。
+
+用户点击 marker 后，可以进入餐厅菜单页面并完成下单流程
 
 ---
 

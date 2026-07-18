@@ -1,6 +1,6 @@
 # FoodExpress
 
-A full-stack food delivery platform inspired by Uber Eats.
+A map-based full-stack food delivery platform inspired by Uber Eats and Google Maps.
 
 ## Tech Stack
 

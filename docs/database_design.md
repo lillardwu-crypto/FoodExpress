@@ -63,10 +63,12 @@ name        VARCHAR(100)
 address     VARCHAR(255)
 phone       VARCHAR(50)
 status      VARCHAR(50)
+latitude    DECIMAL(10, 7)
+longitude   DECIMAL(10, 7)
 created_at  DATETIME
 updated_at  DATETIME
 
-Example status: OPEN, CLOSED, INACTIVE
+restaurants 表保存 latitude 和 longitude，用于前端地图展示和附近餐厅搜索。
 
 3.3 menu_items
 

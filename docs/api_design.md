@@ -93,9 +93,32 @@ Response Example:
   "name": "Boston Burger",
   "address": "123 Main St, Boston, MA",
   "phone": "617-123-4567",
-  "status": "OPEN"
+  "status": "OPEN",
+  "latitude": 42.3505,
+  "longitude": -71.1054
 }
 ```
+
+```http
+GET /api/restaurants/nearby?lat=42.3505&lng=-71.1054&radius=3000
+```
+用途：
+
+根据用户当前位置查询附近餐厅，用于 React 地图页面展示 marker。
+
+Response：
+
+[
+  {
+    "id": 1,
+    "name": "Boston Burger",
+    "address": "123 Main St, Boston, MA",
+    "status": "OPEN",
+    "latitude": 42.3505,
+    "longitude": -71.1054,
+    "distance": 850
+  }
+]
 
 ---
 

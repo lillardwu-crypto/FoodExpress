@@ -7,6 +7,7 @@ import com.foodexpress.exception.ResourceNotFoundException;
 import com.foodexpress.repository.CartItemRepository;
 import com.foodexpress.repository.CartRepository;
 import com.foodexpress.repository.OrderRepository;
+import com.foodexpress.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,6 +31,9 @@ class OrderServiceTest {
     @Mock
     private CartItemRepository cartItemRepository;
 
+    @Mock
+    private UserRepository userRepository;
+
     private OrderService orderService;
 
     @BeforeEach
@@ -37,7 +41,8 @@ class OrderServiceTest {
         orderService = new OrderService(
                 orderRepository,
                 cartRepository,
-                cartItemRepository
+                cartItemRepository,
+                userRepository
         );
     }
 
@@ -59,7 +64,8 @@ class OrderServiceTest {
                 )
         );
 
-        verify(orderRepository, never()).save(any(Order.class));
+        verify(orderRepository, never())
+                .save(any(Order.class));
     }
 
     @Test
@@ -76,6 +82,7 @@ class OrderServiceTest {
                 )
         );
 
-        verify(orderRepository, never()).save(any(Order.class));
+        verify(orderRepository, never())
+                .save(any(Order.class));
     }
 }

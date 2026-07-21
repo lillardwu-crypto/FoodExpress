@@ -1,6 +1,5 @@
 package com.foodexpress.controller;
 
-import com.foodexpress.dto.order.CheckoutRequest;
 import com.foodexpress.dto.order.OrderResponse;
 import com.foodexpress.dto.order.UpdateOrderStatusRequest;
 import com.foodexpress.service.OrderService;
@@ -8,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,14 +20,16 @@ public class OrderController {
     private final OrderService orderService;
 
     /**
-     * Checkout：将用户当前购物车转换为订单
+     * 将当前登录用户的 ACTIVE 购物车转换为订单
      */
     @PostMapping
     public ResponseEntity<OrderResponse> checkout(
-            @Valid @RequestBody CheckoutRequest request
+            Authentication authentication
     ) {
+        String email = authentication.getName();
+
         OrderResponse response =
-                orderService.checkout(request.getUserId());
+                orderService.checkout(email);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -35,33 +37,41 @@ public class OrderController {
     }
 
     /**
-     * 查询订单详情
+     * 查询当前用户的某个订单详情
      */
     @GetMapping("/{orderId}")
     public ResponseEntity<OrderResponse> getOrder(
-            @PathVariable Long orderId
+            @PathVariable Long orderId,
+            Authentication authentication
     ) {
+        String email = authentication.getName();
+
         OrderResponse response =
-                orderService.getOrder(orderId);
+                orderService.getOrder(orderId, email);
 
         return ResponseEntity.ok(response);
     }
 
     /**
-     * 查询用户历史订单
+     * 查询当前登录用户的历史订单
      */
-    @GetMapping("/users/{userId}")
-    public ResponseEntity<List<OrderResponse>> getUserOrders(
-            @PathVariable Long userId
+    @GetMapping
+    public ResponseEntity<List<OrderResponse>> getMyOrders(
+            Authentication authentication
     ) {
+        String email = authentication.getName();
+
         List<OrderResponse> responses =
-                orderService.getUserOrders(userId);
+                orderService.getUserOrders(email);
 
         return ResponseEntity.ok(responses);
     }
 
     /**
      * 更新订单状态
+     *
+     * 这一接口后面应限制为 ADMIN、RESTAURANT 或 DRIVER，
+     * 今天可以暂时保留。
      */
     @PatchMapping("/{orderId}/status")
     public ResponseEntity<OrderResponse> updateOrderStatus(

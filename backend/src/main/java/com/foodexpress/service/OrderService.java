@@ -2,12 +2,20 @@ package com.foodexpress.service;
 
 import com.foodexpress.dto.order.OrderItemResponse;
 import com.foodexpress.dto.order.OrderResponse;
-import com.foodexpress.entity.*;
+import com.foodexpress.entity.Cart;
+import com.foodexpress.entity.CartItem;
+import com.foodexpress.entity.CartStatus;
+import com.foodexpress.entity.MenuItem;
+import com.foodexpress.entity.Order;
+import com.foodexpress.entity.OrderItem;
+import com.foodexpress.entity.OrderStatus;
+import com.foodexpress.entity.User;
 import com.foodexpress.exception.BadRequestException;
 import com.foodexpress.exception.ResourceNotFoundException;
 import com.foodexpress.repository.CartItemRepository;
 import com.foodexpress.repository.CartRepository;
 import com.foodexpress.repository.OrderRepository;
+import com.foodexpress.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,21 +30,29 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
+    private final UserRepository userRepository;
 
     /**
-     * Checkout：将用户当前 ACTIVE 购物车转换为订单
+     * Checkout：
+     * 将当前登录用户的 ACTIVE 购物车转换为订单
      */
     @Transactional
-    public OrderResponse checkout(Long userId) {
+    public OrderResponse checkout(String email) {
 
-        // 1. 查询用户当前 ACTIVE 购物车
+        // 1. 根据 JWT 中的邮箱查询当前用户
+        User user = getUserByEmail(email);
+
+        // 2. 查询当前用户的 ACTIVE 购物车
         Cart cart = cartRepository
-                .findByUser_IdAndStatus(userId, CartStatus.ACTIVE)
+                .findByUser_IdAndStatus(
+                        user.getId(),
+                        CartStatus.ACTIVE
+                )
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Active cart not found for user id: " + userId
+                        "Active cart not found for user: " + email
                 ));
 
-        // 2. 查询购物车中的商品
+        // 3. 查询购物车中的商品
         List<CartItem> cartItems =
                 cartItemRepository.findByCart_Id(cart.getId());
 
@@ -46,26 +62,31 @@ public class OrderService {
             );
         }
 
-        // 3. 根据购物车商品重新计算订单总价
+        // 4. 根据购物车商品重新计算订单总价
         BigDecimal totalPrice = cartItems.stream()
-                .map(cartItem -> cartItem.getMenuItem()
-                        .getPrice()
-                        .multiply(
-                                BigDecimal.valueOf(
-                                        cartItem.getQuantity()
+                .map(cartItem ->
+                        cartItem.getMenuItem()
+                                .getPrice()
+                                .multiply(
+                                        BigDecimal.valueOf(
+                                                cartItem.getQuantity()
+                                        )
                                 )
-                        ))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                )
+                .reduce(
+                        BigDecimal.ZERO,
+                        BigDecimal::add
+                );
 
-        // 4. 创建订单
+        // 5. 创建订单
         Order order = Order.builder()
-                .user(cart.getUser())
+                .user(user)
                 .restaurant(cart.getRestaurant())
                 .status(OrderStatus.PENDING)
                 .totalPrice(totalPrice)
                 .build();
 
-        // 5. CartItem 转换为 OrderItem 快照
+        // 6. 将 CartItem 转换为 OrderItem 快照
         for (CartItem cartItem : cartItems) {
 
             MenuItem menuItem = cartItem.getMenuItem();
@@ -80,39 +101,57 @@ public class OrderService {
             order.addItem(orderItem);
         }
 
-        // 6. 保存 Order，级联保存 OrderItem
+        // 7. 保存 Order，并级联保存 OrderItem
         Order savedOrder = orderRepository.save(order);
 
-        // 7. 修改购物车状态
+        // 8. 修改购物车状态
         cart.setStatus(CartStatus.CHECKED_OUT);
         cartRepository.save(cart);
 
-        // 8. 返回结果
+        // 9. 返回订单响应
         return buildOrderResponse(savedOrder);
     }
 
     /**
-     * 查询订单详情
+     * 查询当前登录用户的订单详情
      */
     @Transactional(readOnly = true)
-    public OrderResponse getOrder(Long orderId) {
+    public OrderResponse getOrder(
+            Long orderId,
+            String email
+    ) {
+        // 1. 查询当前登录用户
+        User user = getUserByEmail(email);
 
+        // 2. 查询订单
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Order not found with id: " + orderId
                 ));
 
+        // 3. 检查订单是否属于当前登录用户
+        if (!order.getUser().getId().equals(user.getId())) {
+            throw new ResourceNotFoundException(
+                    "Order not found with id: " + orderId
+            );
+        }
+
+        // 4. 返回订单详情
         return buildOrderResponse(order);
     }
 
     /**
-     * 查询用户历史订单
+     * 查询当前登录用户的历史订单
      */
     @Transactional(readOnly = true)
-    public List<OrderResponse> getUserOrders(Long userId) {
+    public List<OrderResponse> getUserOrders(String email) {
 
+        // 1. 查询当前登录用户
+        User user = getUserByEmail(email);
+
+        // 2. 查询该用户的全部订单
         return orderRepository
-                .findByUser_IdOrderByCreatedAtDesc(userId)
+                .findByUser_IdOrderByCreatedAtDesc(user.getId())
                 .stream()
                 .map(this::buildOrderResponse)
                 .toList();
@@ -120,6 +159,10 @@ public class OrderService {
 
     /**
      * 更新订单状态
+     *
+     * 当前暂时保留原来的写法。
+     * 后续会根据 CUSTOMER、RESTAURANT、DRIVER、ADMIN
+     * 进一步限制不同角色可以执行的状态更新。
      */
     @Transactional
     public OrderResponse updateOrderStatus(
@@ -159,6 +202,17 @@ public class OrderService {
 
         // 6. 返回更新后的订单
         return buildOrderResponse(savedOrder);
+    }
+
+    /**
+     * 根据邮箱查询当前用户
+     */
+    private User getUserByEmail(String email) {
+
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "User not found with email: " + email
+                ));
     }
 
     /**
@@ -221,7 +275,6 @@ public class OrderService {
     private OrderItemResponse buildOrderItemResponse(
             OrderItem orderItem
     ) {
-
         BigDecimal subtotal = orderItem.getUnitPrice()
                 .multiply(
                         BigDecimal.valueOf(

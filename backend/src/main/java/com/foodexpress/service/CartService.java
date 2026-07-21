@@ -15,9 +15,7 @@ import com.foodexpress.repository.CartItemRepository;
 import com.foodexpress.repository.CartRepository;
 import com.foodexpress.repository.MenuItemRepository;
 import com.foodexpress.repository.UserRepository;
-
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,10 +37,9 @@ public class CartService {
 
     @Transactional
     public CartResponse addItemToCart(
-            Long userId,
+            String email,
             AddCartItemRequest request
     ) {
-        // 先检查请求参数，避免无意义地查询数据库
         if (request.getQuantity() == null ||
                 request.getQuantity() <= 0) {
             throw new BadRequestException(
@@ -56,12 +53,7 @@ public class CartService {
             );
         }
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "User not found with id: " + userId
-                        )
-                );
+        User user = getUserByEmail(email);
 
         MenuItem menuItem = menuItemRepository
                 .findById(request.getMenuItemId())
@@ -74,7 +66,7 @@ public class CartService {
 
         Cart cart = cartRepository
                 .findByUser_IdAndStatus(
-                        userId,
+                        user.getId(),
                         CartStatus.ACTIVE
                 )
                 .orElseGet(() ->
@@ -109,17 +101,19 @@ public class CartService {
     }
 
     @Transactional(readOnly = true)
-    public CartResponse getCart(Long userId) {
+    public CartResponse getCart(String email) {
+
+        User user = getUserByEmail(email);
 
         Cart cart = cartRepository
                 .findByUser_IdAndStatus(
-                        userId,
+                        user.getId(),
                         CartStatus.ACTIVE
                 )
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
-                                "Active cart not found for user id: "
-                                        + userId
+                                "Active cart not found for user: "
+                                        + email
                         )
                 );
 
@@ -128,6 +122,7 @@ public class CartService {
 
     @Transactional
     public CartResponse updateCartItemQuantity(
+            String email,
             Long cartItemId,
             UpdateCartItemRequest request
     ) {
@@ -147,6 +142,11 @@ public class CartService {
                         )
                 );
 
+        validateCartOwnership(
+                cartItem.getCart(),
+                email
+        );
+
         cartItem.setQuantity(request.getQuantity());
 
         cartItemRepository.save(cartItem);
@@ -155,8 +155,10 @@ public class CartService {
     }
 
     @Transactional
-    public CartResponse removeCartItem(Long cartItemId) {
-
+    public CartResponse removeCartItem(
+            String email,
+            Long cartItemId
+    ) {
         CartItem cartItem = cartItemRepository
                 .findById(cartItemId)
                 .orElseThrow(() ->
@@ -168,6 +170,8 @@ public class CartService {
 
         Cart cart = cartItem.getCart();
 
+        validateCartOwnership(cart, email);
+
         cartItemRepository.delete(cartItem);
 
         return buildCartResponse(cart);
@@ -176,6 +180,15 @@ public class CartService {
     // =========================
     // Private helper methods
     // =========================
+
+    private User getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "User not found with email: " + email
+                        )
+                );
+    }
 
     private Cart createCart(
             User user,
@@ -203,6 +216,17 @@ public class CartService {
         if (!cartRestaurantId.equals(itemRestaurantId)) {
             throw new BadRequestException(
                     "Cart can only contain items from one restaurant"
+            );
+        }
+    }
+
+    private void validateCartOwnership(
+            Cart cart,
+            String email
+    ) {
+        if (!cart.getUser().getEmail().equals(email)) {
+            throw new ResourceNotFoundException(
+                    "Cart not found"
             );
         }
     }

@@ -7,8 +7,8 @@ import com.foodexpress.service.CartService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
 
 @RestController
 @RequestMapping("/api/carts")
@@ -17,35 +17,42 @@ public class CartController {
 
     private final CartService cartService;
 
-    @PostMapping("/{userId}/items")
+    @PostMapping("/items")
     public ResponseEntity<CartResponse> addItemToCart(
-            @PathVariable Long userId,
+            Authentication authentication,
             @RequestBody AddCartItemRequest request
     ) {
         CartResponse response =
-                cartService.addItemToCart(userId, request);
+                cartService.addItemToCart(
+                        authentication.getName(),
+                        request
+                );
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
     }
 
-    @GetMapping("/{userId}")
+    @GetMapping
     public ResponseEntity<CartResponse> getCart(
-        @PathVariable Long userId
-        ) {
-            return ResponseEntity.ok(
-                    cartService.getCart(userId)
-            );
-        }
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                cartService.getCart(
+                        authentication.getName()
+                )
+        );
+    }
 
     @PutMapping("/items/{cartItemId}")
     public ResponseEntity<CartResponse> updateCartItemQuantity(
             @PathVariable Long cartItemId,
+            Authentication authentication,
             @RequestBody UpdateCartItemRequest request
     ) {
         return ResponseEntity.ok(
                 cartService.updateCartItemQuantity(
+                        authentication.getName(),
                         cartItemId,
                         request
                 )
@@ -54,11 +61,14 @@ public class CartController {
 
     @DeleteMapping("/items/{cartItemId}")
     public ResponseEntity<CartResponse> removeCartItem(
-            @PathVariable Long cartItemId
+            @PathVariable Long cartItemId,
+            Authentication authentication
     ) {
         return ResponseEntity.ok(
-                cartService.removeCartItem(cartItemId)
+                cartService.removeCartItem(
+                        authentication.getName(),
+                        cartItemId
+                )
         );
     }
-    
 }

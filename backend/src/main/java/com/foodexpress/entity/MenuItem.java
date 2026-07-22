@@ -35,7 +35,9 @@ public class MenuItem {
 
     private String imageUrl;
 
-    private Boolean available;
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean available = true;
 
     private LocalDateTime createdAt;
 

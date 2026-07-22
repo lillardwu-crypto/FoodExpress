@@ -1,9 +1,11 @@
+
 package com.foodexpress.controller;
 
 import com.foodexpress.dto.cart.AddCartItemRequest;
 import com.foodexpress.dto.cart.CartResponse;
 import com.foodexpress.dto.cart.UpdateCartItemRequest;
 import com.foodexpress.service.CartService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +22,7 @@ public class CartController {
     @PostMapping("/items")
     public ResponseEntity<CartResponse> addItemToCart(
             Authentication authentication,
-            @RequestBody AddCartItemRequest request
+            @Valid @RequestBody AddCartItemRequest request
     ) {
         CartResponse response =
                 cartService.addItemToCart(
@@ -48,7 +50,7 @@ public class CartController {
     public ResponseEntity<CartResponse> updateCartItemQuantity(
             @PathVariable Long cartItemId,
             Authentication authentication,
-            @RequestBody UpdateCartItemRequest request
+            @Valid @RequestBody UpdateCartItemRequest request
     ) {
         return ResponseEntity.ok(
                 cartService.updateCartItemQuantity(
@@ -72,3 +74,4 @@ public class CartController {
         );
     }
 }
+

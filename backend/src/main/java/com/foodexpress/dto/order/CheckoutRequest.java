@@ -8,6 +8,6 @@ import lombok.Setter;
 @Setter
 public class CheckoutRequest {
 
-    @NotNull(message = "userId is required")
-    private Long userId;
+    @NotNull(message = "addressId is required")
+    private Long addressId;
 }

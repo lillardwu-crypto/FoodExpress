@@ -2,8 +2,9 @@ package com.foodexpress.service;
 
 import com.foodexpress.entity.Order;
 import com.foodexpress.entity.OrderStatus;
-import com.foodexpress.exception.BadRequestException;
+import com.foodexpress.exception.ConflictException;
 import com.foodexpress.exception.ResourceNotFoundException;
+import com.foodexpress.repository.AddressRepository;
 import com.foodexpress.repository.CartItemRepository;
 import com.foodexpress.repository.CartRepository;
 import com.foodexpress.repository.OrderRepository;
@@ -17,7 +18,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
@@ -34,6 +38,9 @@ class OrderServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private AddressRepository addressRepository;
+
     private OrderService orderService;
 
     @BeforeEach
@@ -42,10 +49,15 @@ class OrderServiceTest {
                 orderRepository,
                 cartRepository,
                 cartItemRepository,
-                userRepository
+                userRepository,
+                addressRepository
         );
     }
 
+    /**
+     * 测试非法订单状态流转：
+     * DELIVERED 订单不能重新变成 PREPARING。
+     */
     @Test
     void updateOrderStatus_shouldRejectInvalidTransition() {
 
@@ -57,7 +69,7 @@ class OrderServiceTest {
                 .thenReturn(Optional.of(order));
 
         assertThrows(
-                BadRequestException.class,
+                ConflictException.class,
                 () -> orderService.updateOrderStatus(
                         1L,
                         OrderStatus.PREPARING
@@ -68,6 +80,10 @@ class OrderServiceTest {
                 .save(any(Order.class));
     }
 
+    /**
+     * 测试更新不存在的订单：
+     * 应抛出 ResourceNotFoundException。
+     */
     @Test
     void updateOrderStatus_shouldThrowWhenOrderNotFound() {
 

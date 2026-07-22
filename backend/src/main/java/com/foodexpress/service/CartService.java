@@ -8,8 +8,10 @@ import com.foodexpress.entity.Cart;
 import com.foodexpress.entity.CartItem;
 import com.foodexpress.entity.CartStatus;
 import com.foodexpress.entity.MenuItem;
+import com.foodexpress.entity.RestaurantStatus;
 import com.foodexpress.entity.User;
 import com.foodexpress.exception.BadRequestException;
+import com.foodexpress.exception.ConflictException;
 import com.foodexpress.exception.ResourceNotFoundException;
 import com.foodexpress.repository.CartItemRepository;
 import com.foodexpress.repository.CartRepository;
@@ -40,6 +42,11 @@ public class CartService {
             String email,
             AddCartItemRequest request
     ) {
+        /*
+         * DTO 层已经使用 @NotNull 和 @Positive 进行校验。
+         * 这里继续保留 Service 层校验，防止未来其他 Service
+         * 直接调用该方法时绕过 Controller 校验。
+         */
         if (request.getQuantity() == null ||
                 request.getQuantity() <= 0) {
             throw new BadRequestException(
@@ -64,6 +71,14 @@ public class CartService {
                         )
                 );
 
+        /*
+         * 加入购物车前检查：
+         * 1. 商品是否仍然可售
+         * 2. 餐厅是否处于 OPEN 状态
+         */
+        validateMenuItemAvailability(menuItem);
+        validateRestaurantAvailability(menuItem);
+
         Cart cart = cartRepository
                 .findByUser_IdAndStatus(
                         user.getId(),
@@ -73,6 +88,9 @@ public class CartService {
                         createCart(user, menuItem)
                 );
 
+        /*
+         * 一个购物车只能包含同一家餐厅的商品。
+         */
         validateRestaurant(cart, menuItem);
 
         CartItem cartItem = cartItemRepository
@@ -82,6 +100,10 @@ public class CartService {
                 )
                 .orElse(null);
 
+        /*
+         * 商品第一次加入购物车时创建 CartItem。
+         * 如果商品已存在，则累加数量。
+         */
         if (cartItem == null) {
             cartItem = CartItem.builder()
                     .cart(cart)
@@ -142,6 +164,9 @@ public class CartService {
                         )
                 );
 
+        /*
+         * 只有购物车所有者才能修改商品数量。
+         */
         validateCartOwnership(
                 cartItem.getCart(),
                 email
@@ -170,6 +195,9 @@ public class CartService {
 
         Cart cart = cartItem.getCart();
 
+        /*
+         * 只有购物车所有者才能删除商品。
+         */
         validateCartOwnership(cart, email);
 
         cartItemRepository.delete(cartItem);
@@ -185,11 +213,46 @@ public class CartService {
         return userRepository.findByEmail(email)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
-                                "User not found with email: " + email
+                                "User not found with email: "
+                                        + email
                         )
                 );
     }
 
+    /**
+     * 检查菜单商品当前是否可售。
+     */
+    private void validateMenuItemAvailability(
+            MenuItem menuItem
+    ) {
+        if (!menuItem.isAvailable()) {
+            throw new ConflictException(
+                    "Menu item is currently unavailable: "
+                            + menuItem.getName()
+            );
+        }
+    }
+
+    /**
+     * 检查餐厅当前是否正常营业。
+     *
+     * CLOSED 和 INACTIVE 状态都不能添加商品。
+     */
+    private void validateRestaurantAvailability(
+            MenuItem menuItem
+    ) {
+        if (menuItem.getRestaurant().getStatus()
+                != RestaurantStatus.OPEN) {
+            throw new ConflictException(
+                    "Restaurant is currently unavailable"
+            );
+        }
+    }
+
+    /**
+     * 当前用户没有 ACTIVE 购物车时，
+     * 根据第一个商品所属餐厅创建购物车。
+     */
     private Cart createCart(
             User user,
             MenuItem menuItem
@@ -203,6 +266,12 @@ public class CartService {
         return cartRepository.save(cart);
     }
 
+    /**
+     * 一个购物车只能包含同一家餐厅的商品。
+     *
+     * 这是业务状态冲突，因此返回 409 Conflict，
+     * 而不是 400 Bad Request。
+     */
     private void validateRestaurant(
             Cart cart,
             MenuItem menuItem
@@ -214,12 +283,17 @@ public class CartService {
                 menuItem.getRestaurant().getId();
 
         if (!cartRestaurantId.equals(itemRestaurantId)) {
-            throw new BadRequestException(
+            throw new ConflictException(
                     "Cart can only contain items from one restaurant"
             );
         }
     }
 
+    /**
+     * 验证当前登录用户是否拥有该购物车。
+     *
+     * 返回 404 而不是 403，避免泄露其他用户购物车是否存在。
+     */
     private void validateCartOwnership(
             Cart cart,
             String email
@@ -231,8 +305,13 @@ public class CartService {
         }
     }
 
-    private CartResponse buildCartResponse(Cart cart) {
-
+    /**
+     * 将购物车 Entity 转换成返回给前端的 DTO，
+     * 同时重新计算每个商品的小计和购物车总价。
+     */
+    private CartResponse buildCartResponse(
+            Cart cart
+    ) {
         List<CartItemResponse> itemResponses =
                 cartItemRepository
                         .findByCart_Id(cart.getId())
@@ -249,23 +328,31 @@ public class CartService {
                                             );
 
                             return CartItemResponse.builder()
-                                    .cartItemId(cartItem.getId())
+                                    .cartItemId(
+                                            cartItem.getId()
+                                    )
                                     .menuItemId(
-                                            cartItem.getMenuItem().getId()
+                                            cartItem.getMenuItem()
+                                                    .getId()
                                     )
                                     .name(
-                                            cartItem.getMenuItem().getName()
+                                            cartItem.getMenuItem()
+                                                    .getName()
                                     )
                                     .unitPrice(
-                                            cartItem.getMenuItem().getPrice()
+                                            cartItem.getMenuItem()
+                                                    .getPrice()
                                     )
-                                    .quantity(cartItem.getQuantity())
+                                    .quantity(
+                                            cartItem.getQuantity()
+                                    )
                                     .subtotal(subtotal)
                                     .build();
                         })
                         .toList();
 
-        BigDecimal totalPrice = itemResponses.stream()
+        BigDecimal totalPrice = itemResponses
+                .stream()
                 .map(CartItemResponse::getSubtotal)
                 .reduce(
                         BigDecimal.ZERO,

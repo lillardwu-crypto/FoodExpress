@@ -1,5 +1,6 @@
 package com.foodexpress.controller;
 
+import com.foodexpress.dto.order.CheckoutRequest;
 import com.foodexpress.dto.order.OrderResponse;
 import com.foodexpress.dto.order.UpdateOrderStatusRequest;
 import com.foodexpress.service.OrderService;
@@ -20,16 +21,21 @@ public class OrderController {
     private final OrderService orderService;
 
     /**
-     * 将当前登录用户的 ACTIVE 购物车转换为订单
+     * 将当前登录用户的 ACTIVE 购物车转换为订单，
+     * 并使用用户选择的地址创建配送地址快照。
      */
     @PostMapping
     public ResponseEntity<OrderResponse> checkout(
+            @Valid @RequestBody CheckoutRequest request,
             Authentication authentication
     ) {
         String email = authentication.getName();
 
         OrderResponse response =
-                orderService.checkout(email);
+                orderService.checkout(
+                        email,
+                        request.getAddressId()
+                );
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -70,8 +76,8 @@ public class OrderController {
     /**
      * 更新订单状态
      *
-     * 这一接口后面应限制为 ADMIN、RESTAURANT 或 DRIVER，
-     * 今天可以暂时保留。
+     * 这一接口后面应限制为 ADMIN、RESTAURANT_OWNER 或 DRIVER，
+     * 目前暂时保留。
      */
     @PatchMapping("/{orderId}/status")
     public ResponseEntity<OrderResponse> updateOrderStatus(

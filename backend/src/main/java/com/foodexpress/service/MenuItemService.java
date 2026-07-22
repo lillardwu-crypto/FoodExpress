@@ -54,7 +54,7 @@ public class MenuItemService {
                 .description(menuItem.getDescription())
                 .price(menuItem.getPrice())
                 .imageUrl(menuItem.getImageUrl())
-                .available(menuItem.getAvailable())
+                .available(menuItem.isAvailable())
                 .build();
     }
 }

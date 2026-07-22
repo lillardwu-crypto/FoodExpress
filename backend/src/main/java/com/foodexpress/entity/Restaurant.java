@@ -29,7 +29,9 @@ public class Restaurant {
     private String phone;
 
     @Enumerated(EnumType.STRING)
-    private RestaurantStatus status;
+    @Column(nullable = false)
+    @Builder.Default
+    private RestaurantStatus status = RestaurantStatus.OPEN;
 
     @Column(precision = 10, scale = 7)
     private BigDecimal latitude;

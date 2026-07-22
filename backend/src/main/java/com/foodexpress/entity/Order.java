@@ -36,6 +36,51 @@ public class Order {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal totalPrice;
 
+    /*
+     * Delivery Address Snapshot
+     *
+     * Checkout 时从 Address 复制过来。
+     * 不与 Address 建立外键关系。
+     * 即使用户之后修改或删除地址，
+     * 历史订单中的配送地址仍然保持不变。
+     */
+
+    @Column(
+        name = "delivery_recipient_name",
+        nullable = false
+    )
+    private String deliveryRecipientName;
+
+    @Column(
+        name = "delivery_phone",
+        nullable = false
+    )
+    private String deliveryPhone;
+
+    @Column(
+        name = "delivery_street",
+        nullable = false
+    )
+    private String deliveryStreet;
+
+    @Column(
+        name = "delivery_city",
+        nullable = false
+    )
+    private String deliveryCity;
+
+    @Column(
+        name = "delivery_state",
+        nullable = false
+    )
+    private String deliveryState;
+
+    @Column(
+        name = "delivery_zip_code",
+        nullable = false
+    )
+    private String deliveryZipCode;
+
     @OneToMany(
         mappedBy = "order",
         cascade = CascadeType.ALL,
@@ -58,6 +103,7 @@ public class Order {
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();
+
         createdAt = now;
         updatedAt = now;
 

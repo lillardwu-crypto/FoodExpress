@@ -37,28 +37,18 @@ public class CartService {
     // Public business methods
     // =========================
 
+    /**
+     * Add a menu item to the authenticated user's active cart.
+     *
+     * If the user does not yet have an active cart, a new cart is created
+     * using the restaurant associated with the first menu item.
+     */
     @Transactional
     public CartResponse addItemToCart(
             String email,
             AddCartItemRequest request
     ) {
-        /*
-         * DTO 层已经使用 @NotNull 和 @Positive 进行校验。
-         * 这里继续保留 Service 层校验，防止未来其他 Service
-         * 直接调用该方法时绕过 Controller 校验。
-         */
-        if (request.getQuantity() == null ||
-                request.getQuantity() <= 0) {
-            throw new BadRequestException(
-                    "Quantity must be greater than zero"
-            );
-        }
-
-        if (request.getMenuItemId() == null) {
-            throw new BadRequestException(
-                    "Menu item id is required"
-            );
-        }
+        validateAddCartItemRequest(request);
 
         User user = getUserByEmail(email);
 
@@ -71,11 +61,6 @@ public class CartService {
                         )
                 );
 
-        /*
-         * 加入购物车前检查：
-         * 1. 商品是否仍然可售
-         * 2. 餐厅是否处于 OPEN 状态
-         */
         validateMenuItemAvailability(menuItem);
         validateRestaurantAvailability(menuItem);
 
@@ -88,9 +73,6 @@ public class CartService {
                         createCart(user, menuItem)
                 );
 
-        /*
-         * 一个购物车只能包含同一家餐厅的商品。
-         */
         validateRestaurant(cart, menuItem);
 
         CartItem cartItem = cartItemRepository
@@ -100,10 +82,6 @@ public class CartService {
                 )
                 .orElse(null);
 
-        /*
-         * 商品第一次加入购物车时创建 CartItem。
-         * 如果商品已存在，则累加数量。
-         */
         if (cartItem == null) {
             cartItem = CartItem.builder()
                     .cart(cart)
@@ -122,9 +100,11 @@ public class CartService {
         return buildCartResponse(cart);
     }
 
+    /**
+     * Get the authenticated user's active cart.
+     */
     @Transactional(readOnly = true)
     public CartResponse getCart(String email) {
-
         User user = getUserByEmail(email);
 
         Cart cart = cartRepository
@@ -142,62 +122,43 @@ public class CartService {
         return buildCartResponse(cart);
     }
 
+    /**
+     * Replace the quantity of an existing cart item.
+     */
     @Transactional
     public CartResponse updateCartItemQuantity(
             String email,
             Long cartItemId,
             UpdateCartItemRequest request
     ) {
-        if (request.getQuantity() == null ||
-                request.getQuantity() <= 0) {
-            throw new BadRequestException(
-                    "Quantity must be greater than zero"
-            );
-        }
+        validateUpdateCartItemRequest(request);
 
-        CartItem cartItem = cartItemRepository
-                .findById(cartItemId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Cart item not found with id: "
-                                        + cartItemId
-                        )
-                );
+        CartItem cartItem = getCartItemById(cartItemId);
 
-        /*
-         * 只有购物车所有者才能修改商品数量。
-         */
         validateCartOwnership(
                 cartItem.getCart(),
                 email
         );
 
         cartItem.setQuantity(request.getQuantity());
-
         cartItemRepository.save(cartItem);
 
-        return buildCartResponse(cartItem.getCart());
+        return buildCartResponse(
+                cartItem.getCart()
+        );
     }
 
+    /**
+     * Remove an item from the authenticated user's cart.
+     */
     @Transactional
     public CartResponse removeCartItem(
             String email,
             Long cartItemId
     ) {
-        CartItem cartItem = cartItemRepository
-                .findById(cartItemId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Cart item not found with id: "
-                                        + cartItemId
-                        )
-                );
-
+        CartItem cartItem = getCartItemById(cartItemId);
         Cart cart = cartItem.getCart();
 
-        /*
-         * 只有购物车所有者才能删除商品。
-         */
         validateCartOwnership(cart, email);
 
         cartItemRepository.delete(cartItem);
@@ -209,8 +170,59 @@ public class CartService {
     // Private helper methods
     // =========================
 
+    /**
+     * Service-layer validation is retained even though the request DTO
+     * also uses Bean Validation.
+     */
+    private void validateAddCartItemRequest(
+            AddCartItemRequest request
+    ) {
+        if (request == null) {
+            throw new BadRequestException(
+                    "Request body is required"
+            );
+        }
+
+        if (request.getMenuItemId() == null) {
+            throw new BadRequestException(
+                    "Menu item id is required"
+            );
+        }
+
+        if (request.getQuantity() == null ||
+                request.getQuantity() <= 0) {
+            throw new BadRequestException(
+                    "Quantity must be greater than zero"
+            );
+        }
+    }
+
+    private void validateUpdateCartItemRequest(
+            UpdateCartItemRequest request
+    ) {
+        if (request == null) {
+            throw new BadRequestException(
+                    "Request body is required"
+            );
+        }
+
+        if (request.getQuantity() == null ||
+                request.getQuantity() <= 0) {
+            throw new BadRequestException(
+                    "Quantity must be greater than zero"
+            );
+        }
+    }
+
     private User getUserByEmail(String email) {
-        return userRepository.findByEmail(email)
+        if (email == null || email.isBlank()) {
+            throw new BadRequestException(
+                    "Authenticated user email is required"
+            );
+        }
+
+        return userRepository
+                .findByEmail(email)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "User not found with email: "
@@ -219,8 +231,27 @@ public class CartService {
                 );
     }
 
+    private CartItem getCartItemById(
+            Long cartItemId
+    ) {
+        if (cartItemId == null) {
+            throw new BadRequestException(
+                    "Cart item id is required"
+            );
+        }
+
+        return cartItemRepository
+                .findById(cartItemId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Cart item not found with id: "
+                                        + cartItemId
+                        )
+                );
+    }
+
     /**
-     * 检查菜单商品当前是否可售。
+     * A menu item must still be available before it can be added.
      */
     private void validateMenuItemAvailability(
             MenuItem menuItem
@@ -234,9 +265,7 @@ public class CartService {
     }
 
     /**
-     * 检查餐厅当前是否正常营业。
-     *
-     * CLOSED 和 INACTIVE 状态都不能添加商品。
+     * Items can only be added from an open restaurant.
      */
     private void validateRestaurantAvailability(
             MenuItem menuItem
@@ -250,8 +279,7 @@ public class CartService {
     }
 
     /**
-     * 当前用户没有 ACTIVE 购物车时，
-     * 根据第一个商品所属餐厅创建购物车。
+     * Create an active cart using the restaurant of the first item.
      */
     private Cart createCart(
             User user,
@@ -259,7 +287,9 @@ public class CartService {
     ) {
         Cart cart = Cart.builder()
                 .user(user)
-                .restaurant(menuItem.getRestaurant())
+                .restaurant(
+                        menuItem.getRestaurant()
+                )
                 .status(CartStatus.ACTIVE)
                 .build();
 
@@ -267,10 +297,7 @@ public class CartService {
     }
 
     /**
-     * 一个购物车只能包含同一家餐厅的商品。
-     *
-     * 这是业务状态冲突，因此返回 409 Conflict，
-     * 而不是 400 Bad Request。
+     * One active cart can only contain items from one restaurant.
      */
     private void validateRestaurant(
             Cart cart,
@@ -279,10 +306,12 @@ public class CartService {
         Long cartRestaurantId =
                 cart.getRestaurant().getId();
 
-        Long itemRestaurantId =
+        Long menuItemRestaurantId =
                 menuItem.getRestaurant().getId();
 
-        if (!cartRestaurantId.equals(itemRestaurantId)) {
+        if (!cartRestaurantId.equals(
+                menuItemRestaurantId
+        )) {
             throw new ConflictException(
                     "Cart can only contain items from one restaurant"
             );
@@ -290,15 +319,19 @@ public class CartService {
     }
 
     /**
-     * 验证当前登录用户是否拥有该购物车。
+     * Verify that the current authenticated user owns the cart.
      *
-     * 返回 404 而不是 403，避免泄露其他用户购物车是否存在。
+     * A 404 response avoids exposing whether another user's cart exists.
      */
     private void validateCartOwnership(
             Cart cart,
             String email
     ) {
-        if (!cart.getUser().getEmail().equals(email)) {
+        if (cart == null ||
+                cart.getUser() == null ||
+                !cart.getUser()
+                        .getEmail()
+                        .equalsIgnoreCase(email)) {
             throw new ResourceNotFoundException(
                     "Cart not found"
             );
@@ -306,8 +339,10 @@ public class CartService {
     }
 
     /**
-     * 将购物车 Entity 转换成返回给前端的 DTO，
-     * 同时重新计算每个商品的小计和购物车总价。
+     * Convert the cart entity into its API response.
+     *
+     * The subtotal and total price are recalculated from the current
+     * menu item price and quantity.
      */
     private CartResponse buildCartResponse(
             Cart cart
@@ -316,39 +351,7 @@ public class CartService {
                 cartItemRepository
                         .findByCart_Id(cart.getId())
                         .stream()
-                        .map(cartItem -> {
-
-                            BigDecimal subtotal =
-                                    cartItem.getMenuItem()
-                                            .getPrice()
-                                            .multiply(
-                                                    BigDecimal.valueOf(
-                                                            cartItem.getQuantity()
-                                                    )
-                                            );
-
-                            return CartItemResponse.builder()
-                                    .cartItemId(
-                                            cartItem.getId()
-                                    )
-                                    .menuItemId(
-                                            cartItem.getMenuItem()
-                                                    .getId()
-                                    )
-                                    .name(
-                                            cartItem.getMenuItem()
-                                                    .getName()
-                                    )
-                                    .unitPrice(
-                                            cartItem.getMenuItem()
-                                                    .getPrice()
-                                    )
-                                    .quantity(
-                                            cartItem.getQuantity()
-                                    )
-                                    .subtotal(subtotal)
-                                    .build();
-                        })
+                        .map(this::buildCartItemResponse)
                         .toList();
 
         BigDecimal totalPrice = itemResponses
@@ -361,7 +364,9 @@ public class CartService {
 
         return CartResponse.builder()
                 .cartId(cart.getId())
-                .userId(cart.getUser().getId())
+                .userId(
+                        cart.getUser().getId()
+                )
                 .restaurantId(
                         cart.getRestaurant().getId()
                 )
@@ -370,6 +375,37 @@ public class CartService {
                 )
                 .items(itemResponses)
                 .totalPrice(totalPrice)
+                .build();
+    }
+
+    private CartItemResponse buildCartItemResponse(
+            CartItem cartItem
+    ) {
+        BigDecimal unitPrice =
+                cartItem.getMenuItem().getPrice();
+
+        BigDecimal subtotal =
+                unitPrice.multiply(
+                        BigDecimal.valueOf(
+                                cartItem.getQuantity()
+                        )
+                );
+
+        return CartItemResponse.builder()
+                .cartItemId(
+                        cartItem.getId()
+                )
+                .menuItemId(
+                        cartItem.getMenuItem().getId()
+                )
+                .name(
+                        cartItem.getMenuItem().getName()
+                )
+                .unitPrice(unitPrice)
+                .quantity(
+                        cartItem.getQuantity()
+                )
+                .subtotal(subtotal)
                 .build();
     }
 }

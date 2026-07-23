@@ -8,11 +8,12 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/users/{userId}/addresses")
+@RequestMapping("/api/addresses")
 @RequiredArgsConstructor
 public class AddressController {
 
@@ -24,10 +25,13 @@ public class AddressController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public AddressResponse createAddress(
-            @PathVariable Long userId,
+            Authentication authentication,
             @Valid @RequestBody CreateAddressRequest request
     ) {
-        return addressService.createAddress(userId, request);
+        return addressService.createAddress(
+            authentication.getName(),
+            request
+    );
     }
 
     /**
@@ -35,9 +39,9 @@ public class AddressController {
      */
     @GetMapping
     public List<AddressResponse> getAddresses(
-            @PathVariable Long userId
+        Authentication authentication
     ) {
-        return addressService.getAddresses(userId);
+        return addressService.getAddresses(authentication.getName());
     }
 
     /**
@@ -45,12 +49,12 @@ public class AddressController {
      */
     @PutMapping("/{addressId}")
     public AddressResponse updateAddress(
-            @PathVariable Long userId,
+            Authentication authentication,
             @PathVariable Long addressId,
             @Valid @RequestBody UpdateAddressRequest request
     ) {
         return addressService.updateAddress(
-                userId,
+                authentication.getName(),
                 addressId,
                 request
         );
@@ -62,10 +66,10 @@ public class AddressController {
     @DeleteMapping("/{addressId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteAddress(
-            @PathVariable Long userId,
+            Authentication authentication,
             @PathVariable Long addressId
     ) {
-        addressService.deleteAddress(userId, addressId);
+        addressService.deleteAddress(authentication.getName(), addressId);
     }
 
     /**
@@ -73,11 +77,11 @@ public class AddressController {
      */
     @PatchMapping("/{addressId}/default")
     public AddressResponse setDefaultAddress(
-            @PathVariable Long userId,
+            Authentication authentication,
             @PathVariable Long addressId
     ) {
         return addressService.setDefaultAddress(
-                userId,
+                authentication.getName(),
                 addressId
         );
     }

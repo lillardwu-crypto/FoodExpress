@@ -2,6 +2,7 @@ package com.foodexpress.service;
 
 import com.foodexpress.entity.Order;
 import com.foodexpress.entity.OrderStatus;
+import com.foodexpress.entity.User;
 import com.foodexpress.exception.ConflictException;
 import com.foodexpress.exception.ResourceNotFoundException;
 import com.foodexpress.repository.AddressRepository;
@@ -26,6 +27,11 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
 
+    private static final String EMAIL =
+            "day9test@example.com";
+
+    private static final Long USER_ID = 1L;
+
     @Mock
     private OrderRepository orderRepository;
 
@@ -40,6 +46,9 @@ class OrderServiceTest {
 
     @Mock
     private AddressRepository addressRepository;
+
+    @Mock
+    private User user;
 
     private OrderService orderService;
 
@@ -61,7 +70,14 @@ class OrderServiceTest {
     @Test
     void updateOrderStatus_shouldRejectInvalidTransition() {
 
+        when(userRepository.findByEmail(EMAIL))
+                .thenReturn(Optional.of(user));
+
+        when(user.getId())
+                .thenReturn(USER_ID);
+
         Order order = Order.builder()
+                .user(user)
                 .status(OrderStatus.DELIVERED)
                 .build();
 
@@ -71,6 +87,7 @@ class OrderServiceTest {
         assertThrows(
                 ConflictException.class,
                 () -> orderService.updateOrderStatus(
+                        EMAIL,
                         1L,
                         OrderStatus.PREPARING
                 )
@@ -87,12 +104,19 @@ class OrderServiceTest {
     @Test
     void updateOrderStatus_shouldThrowWhenOrderNotFound() {
 
+        when(userRepository.findByEmail(EMAIL))
+                .thenReturn(Optional.of(user));
+
+        when(user.getId())
+                .thenReturn(USER_ID);
+
         when(orderRepository.findById(999L))
                 .thenReturn(Optional.empty());
 
         assertThrows(
                 ResourceNotFoundException.class,
                 () -> orderService.updateOrderStatus(
+                        EMAIL,
                         999L,
                         OrderStatus.ACCEPTED
                 )

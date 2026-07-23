@@ -21,21 +21,24 @@ public class OrderController {
     private final OrderService orderService;
 
     /**
-     * 将当前登录用户的 ACTIVE 购物车转换为订单，
-     * 并使用用户选择的地址创建配送地址快照。
+     * 将当前登录用户的 ACTIVE 购物车转换为订单。
+     *
+     * 配送地址通过 addressId 选择，
+     * OrderService 会把地址内容保存为订单地址快照。
+     *
+     * POST /api/orders
      */
     @PostMapping
     public ResponseEntity<OrderResponse> checkout(
-            @Valid @RequestBody CheckoutRequest request,
-            Authentication authentication
+            Authentication authentication,
+            @Valid @RequestBody CheckoutRequest request
     ) {
         String email = authentication.getName();
 
-        OrderResponse response =
-                orderService.checkout(
-                        email,
-                        request.getAddressId()
-                );
+        OrderResponse response = orderService.checkout(
+                email,
+                request.getAddressId()
+        );
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -43,23 +46,9 @@ public class OrderController {
     }
 
     /**
-     * 查询当前用户的某个订单详情
-     */
-    @GetMapping("/{orderId}")
-    public ResponseEntity<OrderResponse> getOrder(
-            @PathVariable Long orderId,
-            Authentication authentication
-    ) {
-        String email = authentication.getName();
-
-        OrderResponse response =
-                orderService.getOrder(orderId, email);
-
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * 查询当前登录用户的历史订单
+     * 查询当前登录用户的所有历史订单。
+     *
+     * GET /api/orders
      */
     @GetMapping
     public ResponseEntity<List<OrderResponse>> getMyOrders(
@@ -74,18 +63,56 @@ public class OrderController {
     }
 
     /**
-     * 更新订单状态
+     * 查询当前登录用户的某个订单详情。
      *
-     * 这一接口后面应限制为 ADMIN、RESTAURANT_OWNER 或 DRIVER，
-     * 目前暂时保留。
+     * Service 层必须验证该订单属于当前用户，
+     * 防止用户通过修改 orderId 查看其他用户的订单。
+     *
+     * GET /api/orders/{orderId}
+     */
+    @GetMapping("/{orderId}")
+    public ResponseEntity<OrderResponse> getOrder(
+            Authentication authentication,
+            @PathVariable Long orderId
+    ) {
+        String email = authentication.getName();
+
+        OrderResponse response = orderService.getOrder(
+                email,
+                orderId
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 更新订单状态。
+     *
+     * 当前先把登录用户邮箱传入 Service，
+     * 后续可以根据用户角色限制不同的状态操作：
+     *
+     * CUSTOMER:
+     * 只能取消自己的订单
+     *
+     * RESTAURANT_OWNER:
+     * 只能更新自己餐厅的订单
+     *
+     * DRIVER:
+     * 只能更新自己配送的订单
+     *
+     * PATCH /api/orders/{orderId}/status
      */
     @PatchMapping("/{orderId}/status")
     public ResponseEntity<OrderResponse> updateOrderStatus(
+            Authentication authentication,
             @PathVariable Long orderId,
             @Valid @RequestBody UpdateOrderStatusRequest request
     ) {
+        String email = authentication.getName();
+
         OrderResponse response =
                 orderService.updateOrderStatus(
+                        email,
                         orderId,
                         request.getStatus()
                 );

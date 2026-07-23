@@ -26,15 +26,11 @@ public class AddressService {
      */
     @Transactional
     public AddressResponse createAddress(
-            Long userId,
+            String email,
             CreateAddressRequest request
     ) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "User not found with id: " + userId
-                        )
-                );
+        User user = getUserByEmail(email);
+        Long userId = user.getId();
 
         List<Address> existingAddresses =
                 addressRepository.findByUserId(userId);
@@ -69,17 +65,13 @@ public class AddressService {
     }
 
     /**
-     * 查询用户的全部地址
+     * 查询当前登录用户的全部地址
      */
     @Transactional(readOnly = true)
-    public List<AddressResponse> getAddresses(Long userId) {
-        if (!userRepository.existsById(userId)) {
-            throw new ResourceNotFoundException(
-                    "User not found with id: " + userId
-            );
-        }
+    public List<AddressResponse> getAddresses(String email) {
+        User user = getUserByEmail(email);
 
-        return addressRepository.findByUserId(userId)
+        return addressRepository.findByUserId(user.getId())
                 .stream()
                 .map(this::buildAddressResponse)
                 .toList();
@@ -90,11 +82,17 @@ public class AddressService {
      */
     @Transactional
     public AddressResponse updateAddress(
-            Long userId,
+            String email,
             Long addressId,
             UpdateAddressRequest request
     ) {
-        Address address = getAddressOwnedByUser(addressId, userId);
+        User user = getUserByEmail(email);
+        Long userId = user.getId();
+
+        Address address = getAddressOwnedByUser(
+                addressId,
+                userId
+        );
 
         /*
          * 如果当前地址要被设置为默认地址，
@@ -116,7 +114,6 @@ public class AddressService {
          * 不通过普通 update 将它取消，避免用户没有默认地址。
          * 更换默认地址使用 setDefaultAddress 方法。
          */
-
         address.setLabel(request.getLabel());
         address.setRecipientName(request.getRecipientName());
         address.setPhone(request.getPhone());
@@ -125,7 +122,8 @@ public class AddressService {
         address.setState(request.getState());
         address.setZipCode(request.getZipCode());
 
-        Address updatedAddress = addressRepository.save(address);
+        Address updatedAddress =
+                addressRepository.save(address);
 
         return buildAddressResponse(updatedAddress);
     }
@@ -134,8 +132,17 @@ public class AddressService {
      * 删除地址
      */
     @Transactional
-    public void deleteAddress(Long userId, Long addressId) {
-        Address address = getAddressOwnedByUser(addressId, userId);
+    public void deleteAddress(
+            String email,
+            Long addressId
+    ) {
+        User user = getUserByEmail(email);
+        Long userId = user.getId();
+
+        Address address = getAddressOwnedByUser(
+                addressId,
+                userId
+        );
 
         boolean wasDefaultAddress = address.isDefault();
 
@@ -151,7 +158,9 @@ public class AddressService {
                     addressRepository.findByUserId(userId);
 
             if (!remainingAddresses.isEmpty()) {
-                Address newDefaultAddress = remainingAddresses.get(0);
+                Address newDefaultAddress =
+                        remainingAddresses.get(0);
+
                 newDefaultAddress.setDefault(true);
                 addressRepository.save(newDefaultAddress);
             }
@@ -163,11 +172,17 @@ public class AddressService {
      */
     @Transactional
     public AddressResponse setDefaultAddress(
-            Long userId,
+            String email,
             Long addressId
     ) {
+        User user = getUserByEmail(email);
+        Long userId = user.getId();
+
         Address targetAddress =
-                getAddressOwnedByUser(addressId, userId);
+                getAddressOwnedByUser(
+                        addressId,
+                        userId
+                );
 
         if (targetAddress.isDefault()) {
             return buildAddressResponse(targetAddress);
@@ -187,6 +202,19 @@ public class AddressService {
     }
 
     /**
+     * 根据 JWT 中的 email 查询当前登录用户
+     */
+    private User getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "User not found with email: "
+                                        + email
+                        )
+                );
+    }
+
+    /**
      * 查询地址，同时验证地址属于当前用户
      */
     private Address getAddressOwnedByUser(
@@ -199,8 +227,6 @@ public class AddressService {
                         new ResourceNotFoundException(
                                 "Address not found with id: "
                                         + addressId
-                                        + " for user: "
-                                        + userId
                         )
                 );
     }

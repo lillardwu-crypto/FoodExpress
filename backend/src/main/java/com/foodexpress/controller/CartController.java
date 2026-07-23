@@ -19,59 +19,84 @@ public class CartController {
 
     private final CartService cartService;
 
+    /**
+     * Add a menu item to the current authenticated user's cart.
+     *
+     * POST /api/carts/items
+     */
     @PostMapping("/items")
     public ResponseEntity<CartResponse> addItemToCart(
             Authentication authentication,
             @Valid @RequestBody AddCartItemRequest request
     ) {
-        CartResponse response =
-                cartService.addItemToCart(
-                        authentication.getName(),
-                        request
-                );
+        String email = authentication.getName();
+
+        CartResponse response = cartService.addItemToCart(
+                email,
+                request
+        );
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
     }
 
+    /**
+     * Get the current authenticated user's active cart.
+     *
+     * GET /api/carts
+     */
     @GetMapping
     public ResponseEntity<CartResponse> getCart(
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
-                cartService.getCart(
-                        authentication.getName()
-                )
-        );
+        String email = authentication.getName();
+
+        CartResponse response = cartService.getCart(email);
+
+        return ResponseEntity.ok(response);
     }
 
+    /**
+     * Update the quantity of an item in the current user's cart.
+     *
+     * PUT /api/carts/items/{cartItemId}
+     */
     @PutMapping("/items/{cartItemId}")
     public ResponseEntity<CartResponse> updateCartItemQuantity(
-            @PathVariable Long cartItemId,
             Authentication authentication,
+            @PathVariable Long cartItemId,
             @Valid @RequestBody UpdateCartItemRequest request
     ) {
-        return ResponseEntity.ok(
-                cartService.updateCartItemQuantity(
-                        authentication.getName(),
-                        cartItemId,
-                        request
-                )
+        String email = authentication.getName();
+
+        CartResponse response = cartService.updateCartItemQuantity(
+                email,
+                cartItemId,
+                request
         );
+
+        return ResponseEntity.ok(response);
     }
 
+    /**
+     * Remove an item from the current user's cart.
+     *
+     * DELETE /api/carts/items/{cartItemId}
+     */
     @DeleteMapping("/items/{cartItemId}")
     public ResponseEntity<CartResponse> removeCartItem(
-            @PathVariable Long cartItemId,
-            Authentication authentication
+            Authentication authentication,
+            @PathVariable Long cartItemId
     ) {
-        return ResponseEntity.ok(
-                cartService.removeCartItem(
-                        authentication.getName(),
-                        cartItemId
-                )
+        String email = authentication.getName();
+
+        CartResponse response = cartService.removeCartItem(
+                email,
+                cartItemId
         );
+
+        return ResponseEntity.ok(response);
     }
 }
 

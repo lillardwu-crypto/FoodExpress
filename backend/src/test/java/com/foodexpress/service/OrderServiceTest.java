@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
+import com.foodexpress.repository.RestaurantRepository;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -31,6 +31,9 @@ class OrderServiceTest {
             "day9test@example.com";
 
     private static final Long USER_ID = 1L;
+
+    @Mock
+    private RestaurantRepository restaurantRepository;
 
     @Mock
     private OrderRepository orderRepository;
@@ -59,7 +62,8 @@ class OrderServiceTest {
                 cartRepository,
                 cartItemRepository,
                 userRepository,
-                addressRepository
+                addressRepository,
+                restaurantRepository
         );
     }
 

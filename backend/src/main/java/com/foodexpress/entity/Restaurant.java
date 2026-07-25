@@ -41,6 +41,14 @@ public class Restaurant {
 
     private LocalDateTime createdAt;
 
+    /**
+     * Restaurant Owner
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id")
+    @JsonIgnore
+    private User owner;
+
     @JsonIgnore
     @OneToMany(mappedBy = "restaurant")
     private List<MenuItem> menuItems;

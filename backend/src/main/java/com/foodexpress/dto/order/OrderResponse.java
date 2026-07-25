@@ -22,6 +22,8 @@ public class OrderResponse {
 
     private String restaurantName;
 
+    private Long driverId;
+
     private OrderStatus status;
 
     private BigDecimal totalPrice;

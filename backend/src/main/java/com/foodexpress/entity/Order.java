@@ -29,6 +29,10 @@ public class Order {
     @JoinColumn(name = "restaurant_id", nullable = false)
     private Restaurant restaurant;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "driver_id")
+    private User driver;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private OrderStatus status;
@@ -88,6 +92,9 @@ public class Order {
     )
     @Builder.Default
     private List<OrderItem> items = new ArrayList<>();
+
+    @Version
+    private Long version;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

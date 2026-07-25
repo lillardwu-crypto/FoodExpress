@@ -10,8 +10,10 @@ import com.foodexpress.entity.MenuItem;
 import com.foodexpress.entity.Order;
 import com.foodexpress.entity.OrderItem;
 import com.foodexpress.entity.OrderStatus;
+import com.foodexpress.entity.Restaurant;
 import com.foodexpress.entity.RestaurantStatus;
 import com.foodexpress.entity.User;
+import com.foodexpress.entity.UserRole;
 import com.foodexpress.exception.BadRequestException;
 import com.foodexpress.exception.ConflictException;
 import com.foodexpress.exception.ResourceNotFoundException;
@@ -19,6 +21,7 @@ import com.foodexpress.repository.AddressRepository;
 import com.foodexpress.repository.CartItemRepository;
 import com.foodexpress.repository.CartRepository;
 import com.foodexpress.repository.OrderRepository;
+import com.foodexpress.repository.RestaurantRepository;
 import com.foodexpress.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -36,6 +39,7 @@ public class OrderService {
     private final CartItemRepository cartItemRepository;
     private final UserRepository userRepository;
     private final AddressRepository addressRepository;
+    private final RestaurantRepository restaurantRepository;
 
     // =========================
     // Public business methods
@@ -225,6 +229,128 @@ public class OrderService {
     }
 
     /**
+     * 查询当前登录商家所属餐厅的全部订单。
+     */
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getMerchantOrders(
+            String email
+    ) {
+        // 1. 查询当前登录用户，并验证其 Merchant 角色
+        User merchant = getMerchantByEmail(email);
+
+        // 2. 查询该 Merchant 所拥有的餐厅
+        Restaurant restaurant =
+                getRestaurantOwnedByMerchant(
+                        merchant
+                );
+
+        // 3. 查询该餐厅的全部订单
+        return orderRepository
+                .findByRestaurant_IdOrderByCreatedAtDesc(
+                        restaurant.getId()
+                )
+                .stream()
+                .map(this::buildOrderResponse)
+                .toList();
+    }
+
+    /**
+     * 商家更新自己餐厅订单的状态。
+     *
+     * 商家当前只允许以下状态流转：
+     *
+     * PENDING -> ACCEPTED
+     * ACCEPTED -> PREPARING
+     * PREPARING -> READY_FOR_PICKUP
+     */
+    @Transactional
+    public OrderResponse updateMerchantOrderStatus(
+            String email,
+            Long orderId,
+            OrderStatus newStatus
+    ) {
+        // 1. 校验请求参数
+        if (orderId == null) {
+            throw new BadRequestException(
+                    "Order id is required"
+            );
+        }
+
+        if (newStatus == null) {
+            throw new BadRequestException(
+                    "Order status is required"
+            );
+        }
+
+        // 2. 查询当前登录用户，并验证其 Merchant 角色
+        User merchant = getMerchantByEmail(email);
+
+        // 3. 查询该 Merchant 所拥有的餐厅
+        Restaurant restaurant =
+                getRestaurantOwnedByMerchant(
+                        merchant
+                );
+
+        // 4. 查询订单
+        Order order = orderRepository
+                .findById(orderId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Order not found with id: "
+                                        + orderId
+                        )
+                );
+
+        /*
+         * 5. 验证订单属于当前商家的餐厅。
+         *
+         * 对于不属于当前商家的订单同样返回 404，
+         * 避免泄露其他餐厅订单是否存在。
+         */
+        if (!order.getRestaurant()
+                .getId()
+                .equals(restaurant.getId())) {
+            throw new ResourceNotFoundException(
+                    "Order not found with id: "
+                            + orderId
+            );
+        }
+
+        OrderStatus currentStatus =
+                order.getStatus();
+
+        // 6. 防止重复更新为相同状态
+        if (currentStatus == newStatus) {
+            throw new ConflictException(
+                    "Order is already in status: "
+                            + currentStatus
+            );
+        }
+
+        // 7. 校验 Merchant 状态流转
+        if (!canMerchantTransition(
+                currentStatus,
+                newStatus
+        )) {
+            throw new ConflictException(
+                    "Invalid merchant order status transition from "
+                            + currentStatus
+                            + " to "
+                            + newStatus
+            );
+        }
+
+        // 8. 更新订单状态
+        order.setStatus(newStatus);
+
+        Order savedOrder =
+                orderRepository.save(order);
+
+        // 9. 返回更新后的订单
+        return buildOrderResponse(savedOrder);
+    }
+
+    /**
      * 更新当前登录用户所属订单的状态。
      *
      * 当前阶段只验证：
@@ -232,8 +358,8 @@ public class OrderService {
      * 2. 订单属于当前用户
      * 3. 状态流转合法
      *
-     * 后续加入 MERCHANT、DRIVER 后，
-     * 还需要根据角色和资源归属进一步限制状态更新权限。
+     * 后续该接口会调整为 Customer 专用取消接口。
+     * Merchant 状态更新使用单独的 Merchant 接口。
      */
     @Transactional
     public OrderResponse updateOrderStatus(
@@ -254,7 +380,8 @@ public class OrderService {
                 user.getId()
         );
 
-        OrderStatus currentStatus = order.getStatus();
+        OrderStatus currentStatus =
+                order.getStatus();
 
         // 防止重复更新为相同状态
         if (currentStatus == newStatus) {
@@ -265,7 +392,10 @@ public class OrderService {
         }
 
         // 校验状态流转是否合法
-        if (!canTransition(currentStatus, newStatus)) {
+        if (!canTransition(
+                currentStatus,
+                newStatus
+        )) {
             throw new ConflictException(
                     "Invalid order status transition from "
                             + currentStatus
@@ -281,6 +411,92 @@ public class OrderService {
 
         return buildOrderResponse(savedOrder);
     }
+
+        /**
+         * 查询当前 Driver 可以接取的订单。
+         *
+         * 可接订单必须满足：
+         * 1. 当前状态为 READY_FOR_PICKUP
+         * 2. 尚未分配 Driver
+         */
+        @Transactional(readOnly = true)
+        public List<OrderResponse> getAvailableDriverOrders(
+                String email
+        ) {
+        // 1. 验证当前登录用户是 Driver
+        getDriverByEmail(email);
+
+        // 2. 查询已经备餐完成、但尚未分配 Driver 的订单
+        return orderRepository
+                .findByStatusAndDriverIsNullOrderByCreatedAtAsc(
+                        OrderStatus.READY_FOR_PICKUP
+                )
+                .stream()
+                .map(this::buildOrderResponse)
+                .toList();
+        }
+
+
+                /**
+         * 当前 Driver 接取一个等待配送的订单。
+         *
+         * 接单条件：
+         * 1. 当前用户必须是 Driver
+         * 2. 订单必须存在
+         * 3. 订单状态必须为 READY_FOR_PICKUP
+         * 4. 订单尚未被其他 Driver 接取
+         */
+        @Transactional
+        public OrderResponse acceptDriverOrder(
+                String email,
+                Long orderId
+        ) {
+        // 1. 校验订单 ID
+        if (orderId == null) {
+                throw new BadRequestException(
+                        "Order id is required"
+                );
+        }
+
+        // 2. 查询当前登录用户，并验证其 Driver 角色
+        User driver = getDriverByEmail(email);
+
+        // 3. 查询订单
+        Order order = orderRepository
+                .findById(orderId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Order not found with id: "
+                                        + orderId
+                        )
+                );
+
+        // 4. 只有已经完成备餐的订单才能被接取
+        if (order.getStatus()
+                != OrderStatus.READY_FOR_PICKUP) {
+                throw new ConflictException(
+                        "Order is not ready for pickup"
+                );
+        }
+
+        // 5. 防止已经被其他 Driver 接取的订单再次被接取
+        if (order.getDriver() != null) {
+                throw new ConflictException(
+                        "Order has already been accepted by another driver"
+                );
+        }
+
+        // 6. 将当前 Driver 分配给订单
+        order.setDriver(driver);
+
+        // 7. 保存订单
+        Order savedOrder =
+                orderRepository.save(order);
+
+        // 8. 返回更新后的订单
+        return buildOrderResponse(savedOrder);
+        }
+
 
     // =========================
     // Private helper methods
@@ -304,6 +520,68 @@ public class OrderService {
                         new ResourceNotFoundException(
                                 "User not found with email: "
                                         + email
+                        )
+                );
+    }
+
+    /**
+     * 根据 JWT 邮箱查询当前用户，
+     * 并验证当前用户是 Merchant。
+     */
+    private User getMerchantByEmail(
+            String email
+    ) {
+        User merchant = getUserByEmail(email);
+
+        if (merchant.getRole()
+                != UserRole.MERCHANT) {
+            throw new ConflictException(
+                    "Current user is not a merchant"
+            );
+        }
+
+        return merchant;
+    }
+
+    /**
+     * 根据 JWT 邮箱查询当前用户，
+     * 并验证当前用户是 Driver。
+     *
+     * Driver 业务方法将在后续调用该方法，
+     * 统一完成用户查询和角色验证。
+     */
+    private User getDriverByEmail(
+            String email
+    ) {
+        User driver = getUserByEmail(email);
+
+        if (driver.getRole()
+                != UserRole.DRIVER) {
+            throw new ConflictException(
+                    "Current user is not a driver"
+            );
+        }
+
+        return driver;
+    }
+
+    /**
+     * 查询当前 Merchant 所拥有的餐厅。
+     *
+     * Merchant 角色验证已经由
+     * getMerchantByEmail() 完成。
+     */
+    private Restaurant getRestaurantOwnedByMerchant(
+            User merchant
+    ) {
+        return restaurantRepository
+                .findByOwner_Id(
+                        merchant.getId()
+                )
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Restaurant not found for merchant: "
+                                        + merchant.getEmail()
                         )
                 );
     }
@@ -346,7 +624,42 @@ public class OrderService {
     }
 
     /**
-     * 判断订单状态是否可以合法流转。
+     * 判断 Merchant 是否可以执行状态流转。
+     *
+     * Merchant 只负责餐厅处理阶段：
+     *
+     * PENDING -> ACCEPTED
+     * ACCEPTED -> PREPARING
+     * PREPARING -> READY_FOR_PICKUP
+     */
+    private boolean canMerchantTransition(
+            OrderStatus currentStatus,
+            OrderStatus newStatus
+    ) {
+        return switch (currentStatus) {
+            case PENDING ->
+                    newStatus
+                            == OrderStatus.ACCEPTED;
+
+            case ACCEPTED ->
+                    newStatus
+                            == OrderStatus.PREPARING;
+
+            case PREPARING ->
+                    newStatus
+                            == OrderStatus.READY_FOR_PICKUP;
+
+            case READY_FOR_PICKUP,
+                 OUT_FOR_DELIVERY,
+                 DELIVERED,
+                 CANCELLED -> false;
+        };
+    }
+
+    /**
+     * 判断通用订单状态是否可以合法流转。
+     *
+     * 当前该方法仍然被旧的 Customer 状态更新接口使用。
      */
     private boolean canTransition(
             OrderStatus currentStatus,
@@ -354,12 +667,14 @@ public class OrderService {
     ) {
         return switch (currentStatus) {
             case PENDING ->
-                    newStatus == OrderStatus.ACCEPTED
+                    newStatus
+                            == OrderStatus.ACCEPTED
                             || newStatus
                             == OrderStatus.CANCELLED;
 
             case ACCEPTED ->
-                    newStatus == OrderStatus.PREPARING
+                    newStatus
+                            == OrderStatus.PREPARING
                             || newStatus
                             == OrderStatus.CANCELLED;
 
@@ -375,7 +690,8 @@ public class OrderService {
                     newStatus
                             == OrderStatus.DELIVERED;
 
-            case DELIVERED, CANCELLED -> false;
+            case DELIVERED,
+                 CANCELLED -> false;
         };
     }
 
@@ -391,24 +707,91 @@ public class OrderService {
                         .map(this::buildOrderItemResponse)
                         .toList();
 
-        return OrderResponse.builder()
-                .orderId(order.getId())
-                .userId(
-                        order.getUser().getId()
-                )
-                .restaurantId(
-                        order.getRestaurant().getId()
-                )
-                .restaurantName(
-                        order.getRestaurant().getName()
-                )
-                .status(order.getStatus())
-                .totalPrice(order.getTotalPrice())
-                .items(itemResponses)
-                .createdAt(order.getCreatedAt())
-                .updatedAt(order.getUpdatedAt())
-                .build();
+                return OrderResponse.builder()
+                        .orderId(order.getId())
+                        .userId(
+                                order.getUser().getId()
+                        )
+                        .restaurantId(
+                                order.getRestaurant().getId()
+                        )
+                        .restaurantName(
+                                order.getRestaurant().getName()
+                        )
+                        .driverId(
+                                order.getDriver() == null
+                                        ? null
+                                        : order.getDriver().getId()
+                        )
+                        .status(order.getStatus())
+                        .totalPrice(order.getTotalPrice())
+                        .items(itemResponses)
+                        .createdAt(order.getCreatedAt())
+                        .updatedAt(order.getUpdatedAt())
+                        .build();
     }
+
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getDriverOrders(
+                String email
+        ) {
+        User driver = getDriverByEmail(email);
+
+        return orderRepository
+                .findByDriver_IdOrderByCreatedAtDesc(
+                        driver.getId()
+                )
+                .stream()
+                .map(this::buildOrderResponse)
+                .toList();
+        }
+
+        @Transactional
+        public OrderResponse updateDriverOrderStatus(
+                String email,
+                Long orderId,
+                OrderStatus newStatus
+        ) {
+        User driver = getDriverByEmail(email);
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Order not found with id: " + orderId
+                        )
+                );
+
+        if (order.getDriver() == null ||
+                !order.getDriver().getId().equals(driver.getId())) {
+                throw new ConflictException(
+                        "Order is not assigned to current driver"
+                );
+        }
+
+        OrderStatus currentStatus = order.getStatus();
+
+        boolean validTransition =
+                currentStatus == OrderStatus.READY_FOR_PICKUP
+                        && newStatus == OrderStatus.OUT_FOR_DELIVERY
+                ||
+                currentStatus == OrderStatus.OUT_FOR_DELIVERY
+                        && newStatus == OrderStatus.DELIVERED;
+
+        if (!validTransition) {
+                throw new ConflictException(
+                        "Invalid driver order status transition: "
+                                + currentStatus
+                                + " -> "
+                                + newStatus
+                );
+        }
+
+        order.setStatus(newStatus);
+
+        Order savedOrder = orderRepository.saveAndFlush(order);
+
+        return buildOrderResponse(savedOrder);
+        }
 
     /**
      * 将 OrderItem Entity 转换为 OrderItemResponse DTO。

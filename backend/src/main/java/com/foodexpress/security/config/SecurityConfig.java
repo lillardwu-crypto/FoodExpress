@@ -56,7 +56,11 @@ public class SecurityConfig {
                                 "/api/menu-items/**"
                         ).permitAll()
 
-                        .anyRequest().authenticated()
+                        .requestMatchers("/api/driver/**")
+                        .hasRole("DRIVER")
+
+                        .anyRequest()
+                        .authenticated()
                 )
 
                 .addFilterBefore(

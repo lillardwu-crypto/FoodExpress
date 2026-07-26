@@ -1,596 +1,280 @@
-# FoodExpress API Design
+FoodExpress Backend API Design
 
-## 1. API 设计目标
+Project: FoodExpress (Uber Eats Clone)
 
-FoodExpress 采用前后端分离架构：
+Version: v1.0
 
-```text
-React Frontend  →  Spring Boot REST API  →  MySQL Database
-```
+Authentication: JWT Bearer Token
 
-API 的主要目标是支持两个核心业务流程：
+Base URL
 
-1. 用户点餐流程
-   浏览餐厅 → 查看菜单 → 加入购物车 → 下单 → 查看订单
+http://localhost:8080/api
+Authentication
 
-2. 商家管理流程
-   管理菜品 → 查看订单 → 更新订单状态
+Most APIs require JWT authentication.
 
-所有 API 统一使用 `/api` 作为前缀。
+Request Header
 
----
+Authorization: Bearer <JWT_TOKEN>
+Authentication APIs
+Register
 
-## 2. RESTful 设计规范
+Create a new customer account.
 
-### HTTP Method 规范
-
-```text
-GET     查询数据
-POST    创建数据
-PUT     更新完整资源
-PATCH   更新部分字段
-DELETE  删除资源
-```
-
-### Base URL
-
-```http
-/api
-```
-
----
-
-# 3. Restaurant API
-
-## 3.1 获取餐厅列表
-
-```http
-GET /api/restaurants
-```
-
-用途：
-
-用户进入首页时，获取所有可展示餐厅。
-
-Response Example:
-
-```json
-[
-  {
-    "id": 1,
-    "name": "Boston Burger",
-    "address": "123 Main St, Boston, MA",
-    "phone": "617-123-4567",
-    "status": "OPEN"
-  },
-  {
-    "id": 2,
-    "name": "Sushi House",
-    "address": "88 Harvard Ave, Boston, MA",
-    "phone": "617-888-9999",
-    "status": "OPEN"
-  }
-]
-```
-
----
-
-## 3.2 获取餐厅详情
-
-```http
-GET /api/restaurants/{restaurantId}
-```
-
-用途：
-
-用户点击某个餐厅后，查看餐厅详情。
-
-Response Example:
-
-```json
+Endpoint
+POST /auth/register
+Request
 {
-  "id": 1,
-  "name": "Boston Burger",
-  "address": "123 Main St, Boston, MA",
-  "phone": "617-123-4567",
-  "status": "OPEN",
-  "latitude": 42.3505,
-  "longitude": -71.1054
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "123456"
 }
-```
-
-```http
-GET /api/restaurants/nearby?lat=42.3505&lng=-71.1054&radius=3000
-```
-用途：
-
-根据用户当前位置查询附近餐厅，用于 React 地图页面展示 marker。
-
-Response：
-
-[
-  {
-    "id": 1,
-    "name": "Boston Burger",
-    "address": "123 Main St, Boston, MA",
-    "status": "OPEN",
-    "latitude": 42.3505,
-    "longitude": -71.1054,
-    "distance": 850
-  }
-]
-
----
-
-# 4. Menu Item API
-
-## 4.1 获取某个餐厅的菜单
-
-```http
-GET /api/restaurants/{restaurantId}/menu-items
-```
-
-用途：
-
-用户进入餐厅页面后，查看该餐厅所有可购买菜品。
-
-Response Example:
-
-```json
-[
-  {
-    "id": 1,
-    "restaurantId": 1,
-    "name": "Cheese Burger",
-    "description": "Classic burger with cheese",
-    "price": 12.99,
-    "imageUrl": "https://example.com/burger.jpg",
-    "available": true
-  },
-  {
-    "id": 2,
-    "restaurantId": 1,
-    "name": "French Fries",
-    "description": "Crispy fries",
-    "price": 4.99,
-    "imageUrl": "https://example.com/fries.jpg",
-    "available": true
-  }
-]
-```
-
----
-
-# 5. Cart API
-
-## 5.1 查看购物车
-
-```http
-GET /api/cart
-```
-
-用途：
-
-用户查看当前购物车内容。
-
-Response Example:
-
-```json
-{
-  "cartId": 1,
-  "userId": 1,
-  "items": [
-    {
-      "cartItemId": 1,
-      "menuItemId": 1,
-      "name": "Cheese Burger",
-      "price": 12.99,
-      "quantity": 2,
-      "subtotal": 25.98
-    }
-  ],
-  "totalPrice": 25.98
-}
-```
-
----
-
-## 5.2 添加商品到购物车
-
-```http
-POST /api/cart/items
-```
-
-用途：
-
-用户点击“加入购物车”。
-
-Request Example:
-
-```json
-{
-  "menuItemId": 1,
-  "quantity": 2
-}
-```
-
-Response Example:
-
-```json
-{
-  "message": "Item added to cart successfully"
-}
-```
-
----
-
-## 5.3 修改购物车商品数量
-
-```http
-PUT /api/cart/items/{cartItemId}
-```
-
-用途：
-
-用户修改购物车中某个商品的数量。
-
-Request Example:
-
-```json
-{
-  "quantity": 3
-}
-```
-
-Response Example:
-
-```json
-{
-  "message": "Cart item updated successfully"
-}
-```
-
----
-
-## 5.4 删除购物车商品
-
-```http
-DELETE /api/cart/items/{cartItemId}
-```
-
-用途：
-
-用户从购物车中删除某个商品。
-
-Response Example:
-
-```json
-{
-  "message": "Cart item removed successfully"
-}
-```
-
----
-
-# 6. Order API
-
-## 6.1 创建订单
-
-```http
-POST /api/orders
-```
-
-用途：
-
-用户从购物车创建订单。
-
-Request Example:
-
-```json
-{
-  "restaurantId": 1
-}
-```
-
-Response Example:
-
-```json
-{
-  "orderId": 1001,
-  "status": "PENDING",
-  "totalPrice": 25.98,
-  "message": "Order created successfully"
-}
-```
-
-设计说明：
-
-创建订单时，系统会从购物车中读取商品，并在 `order_items` 表中保存商品名称和价格快照。
-
----
-
-## 6.2 查看当前用户所有订单
-
-```http
-GET /api/orders
-```
-
-用途：
-
-用户查看自己的历史订单。
-
-Response Example:
-
-```json
-[
-  {
-    "orderId": 1001,
-    "restaurantName": "Boston Burger",
-    "status": "PENDING",
-    "totalPrice": 25.98,
-    "createdAt": "2026-06-18T12:30:00"
-  }
-]
-```
-
----
-
-## 6.3 查看订单详情
-
-```http
-GET /api/orders/{orderId}
-```
-
-用途：
-
-用户查看某个订单的详细内容。
-
-Response Example:
-
-```json
-{
-  "orderId": 1001,
-  "restaurantName": "Boston Burger",
-  "status": "PENDING",
-  "totalPrice": 25.98,
-  "items": [
-    {
-      "menuItemName": "Cheese Burger",
-      "price": 12.99,
-      "quantity": 2,
-      "subtotal": 25.98
-    }
-  ],
-  "createdAt": "2026-06-18T12:30:00"
-}
-```
-
----
-
-# 7. Merchant API
-
-## 7.1 商家新增菜品
-
-```http
-POST /api/merchant/restaurants/{restaurantId}/menu-items
-```
-
-用途：
-
-商家为自己的餐厅新增菜品。
-
-Request Example:
-
-```json
-{
-  "name": "Chicken Sandwich",
-  "description": "Grilled chicken sandwich",
-  "price": 10.99,
-  "imageUrl": "https://example.com/chicken.jpg",
-  "available": true
-}
-```
-
-Response Example:
-
-```json
+Response
 {
   "id": 3,
-  "message": "Menu item created successfully"
+  "name": "John Doe",
+  "email": "john@example.com",
+  "role": "CUSTOMER"
 }
-```
+Login
 
----
+Authenticate user and return JWT.
 
-## 7.2 商家修改菜品
-
-```http
-PUT /api/merchant/menu-items/{menuItemId}
-```
-
-用途：
-
-商家修改某个菜品的信息。
-
-Request Example:
-
-```json
+Endpoint
+POST /auth/login
+Request
 {
-  "name": "Double Cheese Burger",
-  "description": "Burger with double cheese",
-  "price": 15.99,
-  "imageUrl": "https://example.com/double-burger.jpg",
-  "available": true
+  "email": "john@example.com",
+  "password": "123456"
 }
-```
-
-Response Example:
-
-```json
+Response
 {
-  "message": "Menu item updated successfully"
+  "token": "eyJhbGc..."
 }
-```
+Restaurant APIs
+Get All Restaurants
+Endpoint
+GET /restaurants
+Response
+[
+  {
+    "id": 1,
+    "name": "Boston Burger",
+    "status": "OPEN"
+  }
+]
+Get Restaurant By ID
+Endpoint
+GET /restaurants/{id}
+Menu APIs
+Get Restaurant Menu
+Endpoint
+GET /restaurants/{restaurantId}/menu
+Response
+[
+  {
+    "id": 1,
+    "name": "Cheese Burger",
+    "price": 12.99,
+    "available": true
+  }
+]
+Cart APIs
 
----
+Authentication Required
 
-## 7.3 商家删除菜品
-
-```http
-DELETE /api/merchant/menu-items/{menuItemId}
-```
-
-用途：
-
-商家删除某个菜品。
-
-Response Example:
-
-```json
+Add Item to Cart
+Endpoint
+POST /carts/items
+Request
 {
-  "message": "Menu item deleted successfully"
+    "menuItemId":1,
+    "quantity":2
 }
-```
-
----
-
-## 7.4 商家更新订单状态
-
-```http
-PATCH /api/merchant/orders/{orderId}/status
-```
-
-用途：
-
-商家处理订单状态流转。
-
-Request Example:
-
-```json
+Response
 {
-  "status": "PREPARING"
+    "cartId":2,
+    "userId":3,
+    "restaurantId":1,
+    "totalPrice":25.98,
+    "items":[]
 }
-```
-
-Response Example:
-
-```json
+Get Active Cart
+Endpoint
+GET /carts
+Response
 {
-  "orderId": 1001,
-  "status": "PREPARING",
-  "message": "Order status updated successfully"
+    "cartId":2,
+    "restaurantId":1,
+    "totalPrice":25.98,
+    "items":[]
 }
-```
+Address APIs
 
-订单状态流转：
+Authentication Required
 
-```text
+Create Address
+Endpoint
+POST /users/{userId}/addresses
+Request
+{
+    "label":"Home",
+    "recipientName":"John",
+    "phone":"123456789",
+    "street":"123 Main Street",
+    "city":"Boston",
+    "state":"MA",
+    "zipCode":"02115"
+}
+Get User Addresses
+Endpoint
+GET /users/{userId}/addresses
+Delete Address
+Endpoint
+DELETE /users/{userId}/addresses/{addressId}
+Set Default Address
+Endpoint
+PUT /users/{userId}/addresses/{addressId}/default
+Checkout API
+
+Authentication Required
+
+Checkout
+
+Create a new order from active cart.
+
+Endpoint
+POST /orders
+Request
+{
+    "addressId":4
+}
+Response
+{
+    "orderId":7,
+    "status":"PENDING",
+    "totalPrice":51.96
+}
+Customer Order APIs
+
+Authentication Required
+
+Get Current User Orders
+Endpoint
+GET /orders
+Response
+[
+    {
+        "orderId":7,
+        "status":"PENDING",
+        "restaurantId":1,
+        "totalPrice":51.96
+    }
+]
+Merchant APIs
+
+Authentication Required
+
+Role: MERCHANT
+
+Get Merchant Orders
+
+Retrieve all orders belonging to the authenticated merchant.
+
+Endpoint
+GET /merchant/orders
+Response
+[
+    {
+        "orderId":7,
+        "status":"READY_FOR_PICKUP",
+        "restaurantId":1,
+        "totalPrice":51.96
+    }
+]
+Update Order Status
+
+Merchant updates an order status.
+
+Endpoint
+PATCH /merchant/orders/{orderId}/status
+Request
+{
+    "status":"PREPARING"
+}
+Response
+{
+    "orderId":7,
+    "status":"PREPARING"
+}
+Business Rules
+Cart
+One active cart per user
+One restaurant per cart
+Menu item must be available
+Restaurant must be OPEN
+Checkout
+Cart cannot be empty
+Address must belong to current user
+Order copies menu price into OrderItem
+Cart becomes inactive after checkout
+Merchant
+
+Merchant can only access:
+
+Orders belonging to owned restaurant
+
+Merchant allowed transitions:
+
 PENDING
-→ ACCEPTED
-→ PREPARING
-→ READY_FOR_PICKUP
-→ OUT_FOR_DELIVERY
-→ DELIVERED
-```
+↓
 
-取消状态：
+ACCEPTED
+↓
 
-```text
-CANCELLED
-```
+PREPARING
+↓
 
----
+READY_FOR_PICKUP
 
-# 8. 错误响应格式
+Invalid transition
 
-所有错误统一返回：
+409 Conflict
 
-```json
-{
-  "timestamp": "2026-06-18T12:30:00",
-  "status": 404,
-  "error": "Not Found",
-  "message": "Restaurant not found",
-  "path": "/api/restaurants/999"
-}
-```
+Accessing another merchant's order
 
-常见 HTTP 状态码：
-
-```text
-200 OK
-201 Created
-400 Bad Request
-401 Unauthorized
-403 Forbidden
 404 Not Found
-500 Internal Server Error
-```
+Authentication & Authorization
+Role	Permission
+CUSTOMER	Browse restaurant, cart, checkout, view own orders
+MERCHANT	View own restaurant orders, update order status
+DRIVER	(Coming Soon)
+ADMIN	(Coming Soon)
+Order State Machine
+Customer
 
----
+PENDING
+    │
+    ▼
 
-# 9. API 与数据库表关系
+Merchant
 
-```text
-GET /api/restaurants
-→ restaurants
+ACCEPTED
+    │
+    ▼
 
-GET /api/restaurants/{restaurantId}/menu-items
-→ menu_items
+PREPARING
+    │
+    ▼
 
-GET /api/cart
-→ carts, cart_items, menu_items
+READY_FOR_PICKUP
+    │
+    ▼
 
-POST /api/cart/items
-→ carts, cart_items
+Driver
 
-POST /api/orders
-→ orders, order_items, carts, cart_items
+OUT_FOR_DELIVERY
+    │
+    ▼
 
-GET /api/orders
-→ orders, restaurants
-
-GET /api/orders/{orderId}
-→ orders, order_items, restaurants
-
-POST /api/merchant/restaurants/{restaurantId}/menu-items
-→ menu_items
-
-PATCH /api/merchant/orders/{orderId}/status
-→ orders
-```
-
----
-
-# 10. 面试讲法
-
-本项目的 API 不是简单按照数据库表暴露 CRUD，而是按照真实业务流程设计。
-
-用户端 API 主要围绕：
-
-```text
-浏览餐厅
-查看菜单
-购物车
-下单
-查看订单
-```
-
-商家端 API 主要围绕：
-
-```text
-菜单管理
-订单状态更新
-```
-
-订单创建接口是核心接口，因为它涉及：
-
-```text
-购物车读取
-订单创建
-订单项快照
-总价计算
-购物车清空
-```
-
-这也是后端业务逻辑最重要的部分。
+DELIVERED

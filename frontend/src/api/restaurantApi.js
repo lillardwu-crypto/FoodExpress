@@ -1,5 +1,6 @@
-import restaurants from "../data/restaurants";
+import apiClient from "./apiClient";
 
-export function getRestaurants() {
-  return restaurants;
+export async function getRestaurants() {
+    const response = await apiClient.get("/restaurants");
+    return response.data;
 }

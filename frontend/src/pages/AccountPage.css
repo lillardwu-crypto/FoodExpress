@@ -1,0 +1,158 @@
+.account-page {
+    min-height: calc(100vh - 72px);
+    background-color: #f7f7f7;
+    padding: 48px 24px 80px;
+}
+
+.account-container {
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+}
+
+.account-profile {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 32px;
+}
+
+.account-avatar {
+    display: flex;
+    width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: #111111;
+    border-radius: 50%;
+    color: #ffffff;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.account-profile-info h1 {
+    margin: 0 0 5px;
+    color: #111111;
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: -0.8px;
+}
+
+.account-profile-info p {
+    margin: 0;
+    color: #666666;
+    font-size: 15px;
+}
+
+.account-menu {
+    overflow: hidden;
+    background-color: #ffffff;
+    border: 1px solid #e4e4e4;
+    border-radius: 16px;
+}
+
+.account-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 24px;
+    color: inherit;
+    text-decoration: none;
+    transition: background-color 0.2s ease;
+}
+
+.account-menu-item:not(:last-child) {
+    border-bottom: 1px solid #ececec;
+}
+
+.account-menu-item:hover {
+    background-color: #f8f8f8;
+}
+
+.account-menu-icon {
+    display: flex;
+    width: 46px;
+    height: 46px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: #eeeeee;
+    border-radius: 50%;
+    color: #222222;
+    font-size: 21px;
+}
+
+.account-menu-content {
+    min-width: 0;
+    flex: 1;
+}
+
+.account-menu-content h2 {
+    margin: 0 0 5px;
+    color: #161616;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.account-menu-content p {
+    margin: 0;
+    color: #6a6a6a;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.account-menu-arrow {
+    color: #777777;
+    font-size: 30px;
+    font-weight: 300;
+    line-height: 1;
+}
+
+.account-logout-button {
+    width: 100%;
+    margin-top: 22px;
+    background-color: transparent;
+    border: 1px solid #d5d5d5;
+    border-radius: 12px;
+    padding: 15px 20px;
+    color: #222222;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        background-color 0.2s ease,
+        border-color 0.2s ease;
+}
+
+.account-logout-button:hover {
+    background-color: #eeeeee;
+    border-color: #bbbbbb;
+}
+
+@media (max-width: 600px) {
+    .account-page {
+        padding: 32px 16px 60px;
+    }
+
+    .account-profile-info h1 {
+        font-size: 29px;
+    }
+
+    .account-avatar {
+        width: 56px;
+        height: 56px;
+        font-size: 21px;
+    }
+
+    .account-menu-item {
+        gap: 14px;
+        padding: 20px 16px;
+    }
+
+    .account-menu-icon {
+        width: 42px;
+        height: 42px;
+    }
+}

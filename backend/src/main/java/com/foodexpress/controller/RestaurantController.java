@@ -23,4 +23,9 @@ public class RestaurantController {
     public List<Restaurant> getAllRestaurants() {
         return restaurantService.getAllRestaurants();
     }
+
+    @GetMapping("/{id}")
+    public Restaurant getRestaurantById(@PathVariable Long id) {
+        return restaurantService.getRestaurantById(id);
+    }
 }

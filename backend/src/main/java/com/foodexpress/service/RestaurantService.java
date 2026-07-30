@@ -2,6 +2,7 @@ package com.foodexpress.service;
 
 import com.foodexpress.entity.Restaurant;
 import com.foodexpress.entity.RestaurantStatus;
+import com.foodexpress.exception.ResourceNotFoundException;
 import com.foodexpress.repository.RestaurantRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,8 +19,7 @@ public class RestaurantService {
 
     public Restaurant createSampleRestaurant() {
 
-        List<Restaurant> restaurants =
-                restaurantRepository.findAll();
+        List<Restaurant> restaurants = restaurantRepository.findAll();
 
         if (!restaurants.isEmpty()) {
             return restaurants.get(0);
@@ -29,6 +29,11 @@ public class RestaurantService {
                 .name("Boston Burger")
                 .address("123 Main St, Boston, MA")
                 .phone("617-123-4567")
+                .imageUrl("burger.jpg")
+                .rating(new BigDecimal("4.8"))
+                .category("Burger")
+                .deliveryTime(25)
+                .deliveryFee(new BigDecimal("2.99"))
                 .status(RestaurantStatus.OPEN)
                 .latitude(new BigDecimal("42.3505000"))
                 .longitude(new BigDecimal("-71.1054000"))
@@ -41,5 +46,14 @@ public class RestaurantService {
 
     public List<Restaurant> getAllRestaurants() {
         return restaurantRepository.findAll();
+    }
+
+    public Restaurant getRestaurantById(Long id) {
+        return restaurantRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Restaurant not found with id: " + id
+                        )
+                );
     }
 }

@@ -1,0 +1,40 @@
+.main-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 48px 24px;
+  }
+  
+  .restaurant-section {
+    padding: 72px 0 24px;
+  }
+  
+  .section-heading {
+    margin-bottom: 28px;
+  
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+  
+  .section-eyebrow {
+    margin-bottom: 8px;
+  
+    color: #06a85f;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+  }
+  
+  .section-heading h2 {
+    color: #171717;
+    font-size: 36px;
+    line-height: 1.2;
+  }
+  
+  .restaurant-grid {
+    display: grid;
+    grid-template-columns:
+      repeat(auto-fit, minmax(320px, 1fr));
+    gap: 28px;
+  }

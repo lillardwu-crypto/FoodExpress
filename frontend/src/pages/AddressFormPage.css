@@ -1,0 +1,141 @@
+.address-form-page {
+    min-height: calc(100vh - 72px);
+    background-color: #f7f7f7;
+    padding: 48px 24px 80px;
+}
+
+.address-form-page-container {
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+}
+
+.address-form-back-link {
+    display: inline-block;
+    margin-bottom: 20px;
+    color: #555555;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.address-form-back-link:hover {
+    color: #111111;
+}
+
+.address-form-page-header {
+    margin-bottom: 28px;
+}
+
+.address-form-page-header h1 {
+    margin: 0 0 8px;
+    color: #111111;
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: -1px;
+}
+
+.address-form-page-header p {
+    margin: 0;
+    color: #666666;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.address-form-card {
+    background-color: #ffffff;
+    border: 1px solid #e3e3e3;
+    border-radius: 16px;
+    padding: 32px;
+}
+
+.address-form {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+.address-form-field {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+}
+
+.address-form-field label {
+    margin-bottom: 8px;
+    color: #222222;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.address-form-field input {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #cccccc;
+    border-radius: 10px;
+    padding: 14px 15px;
+    color: #111111;
+    font-family: inherit;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.address-form-field input:focus {
+    border-color: #111111;
+}
+
+.address-form-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1.4fr;
+    gap: 16px;
+}
+
+.address-field-error {
+    margin-top: 6px;
+    color: #d93025;
+    font-size: 13px;
+}
+
+.address-form-server-error {
+    background-color: #fff3f3;
+    border: 1px solid #f5bcbc;
+    border-radius: 10px;
+    padding: 12px;
+    color: #b42318;
+}
+
+.address-submit-button {
+    margin-top: 10px;
+    padding: 15px;
+    border: none;
+    border-radius: 10px;
+    background-color: #111111;
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.address-submit-button:hover {
+    background-color: #333333;
+}
+
+.address-submit-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+@media (max-width: 700px) {
+    .address-form-page {
+        padding: 32px 16px 60px;
+    }
+
+    .address-form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .address-form-card {
+        padding: 24px 18px;
+    }
+}

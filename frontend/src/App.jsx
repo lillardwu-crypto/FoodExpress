@@ -1,24 +1,19 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import MainLayout from "./layouts/MainLayout";
-import HomePage from "./pages/HomePage";
-import RestaurantPage from "./pages/RestaurantPage";
-import CartPage from "./pages/CartPage";
-import LoginPage from "./pages/LoginPage";
+import { BrowserRouter } from "react-router-dom";
+
+import Navbar from "./components/Navbar";
+import AppRoutes from "./router/AppRoutes";
+
 import "./App.css";
 
 function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route element={<MainLayout />}>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/restaurants" element={<RestaurantPage />} />
-          <Route path="/cart" element={<CartPage />} />
-          <Route path="/login" element={<LoginPage />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
-  );
+    return (
+        <BrowserRouter>
+            <div className="app-layout">
+                <Navbar />
+                <AppRoutes />
+            </div>
+        </BrowserRouter>
+    );
 }
 
 export default App;

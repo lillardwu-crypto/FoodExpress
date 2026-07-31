@@ -1,6 +1,7 @@
+
 package com.foodexpress.controller;
 
-import com.foodexpress.entity.Restaurant;
+import com.foodexpress.dto.restaurant.RestaurantResponse;
 import com.foodexpress.service.RestaurantService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -14,18 +15,28 @@ public class RestaurantController {
 
     private final RestaurantService restaurantService;
 
+    /**
+     * Creates a sample restaurant when the database is empty.
+     */
     @PostMapping("/sample")
-    public Restaurant createSampleRestaurant() {
+    public RestaurantResponse createSampleRestaurant() {
         return restaurantService.createSampleRestaurant();
     }
 
+    /**
+     * Returns all restaurants.
+     */
     @GetMapping
-    public List<Restaurant> getAllRestaurants() {
+    public List<RestaurantResponse> getAllRestaurants() {
         return restaurantService.getAllRestaurants();
     }
 
+    /**
+     * Returns one restaurant by id.
+     */
     @GetMapping("/{id}")
-    public Restaurant getRestaurantById(@PathVariable Long id) {
+    public RestaurantResponse getRestaurantById(@PathVariable Long id) {
         return restaurantService.getRestaurantById(id);
     }
 }
+

@@ -112,3 +112,35 @@
 
     color: #d93025;
 }
+
+.login-success-message {
+    margin-bottom: 18px;
+
+    padding: 12px 14px;
+
+    border: 1px solid #a9dfc1;
+    border-radius: 10px;
+
+    color: #167245;
+    background: #effcf5;
+}
+
+.login-register-prompt {
+    margin: 26px 0 0;
+
+    color: #666666;
+
+    text-align: center;
+}
+
+.login-register-prompt a {
+    color: #06a85f;
+
+    font-weight: 700;
+
+    text-decoration: none;
+}
+
+.login-register-prompt a:hover {
+    text-decoration: underline;
+}

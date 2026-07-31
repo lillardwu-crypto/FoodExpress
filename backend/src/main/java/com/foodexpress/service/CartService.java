@@ -40,8 +40,13 @@ public class CartService {
     /**
      * Add a menu item to the authenticated user's active cart.
      *
-     * If the user does not yet have an active cart, a new cart is created
-     * using the restaurant associated with the first menu item.
+     * If the user does not yet have an active cart,
+     * a new cart is created using the restaurant associated
+     * with the first menu item.
+     *
+     * If the active cart exists but is empty,
+     * it may be reassigned to the restaurant associated
+     * with the new menu item.
      */
     @Transactional
     public CartResponse addItemToCart(
@@ -70,10 +75,45 @@ public class CartService {
                         CartStatus.ACTIVE
                 )
                 .orElseGet(() ->
-                        createCart(user, menuItem)
+                        createCart(
+                                user,
+                                menuItem
+                        )
                 );
 
-        validateRestaurant(cart, menuItem);
+        /*
+         * Check whether the current ACTIVE cart
+         * still contains any items.
+         *
+         * If the cart is empty, the user has completely
+         * cleared it and may start ordering from another
+         * restaurant.
+         */
+        List<CartItem> existingItems =
+                cartItemRepository.findByCart_Id(
+                        cart.getId()
+                );
+
+        if (existingItems.isEmpty()) {
+            /*
+             * Reassign the empty cart to the restaurant
+             * of the newly selected menu item.
+             */
+            cart.setRestaurant(
+                    menuItem.getRestaurant()
+            );
+
+            cart = cartRepository.save(cart);
+        } else {
+            /*
+             * A non-empty cart may only contain items
+             * from one restaurant.
+             */
+            validateRestaurant(
+                    cart,
+                    menuItem
+            );
+        }
 
         CartItem cartItem = cartItemRepository
                 .findByCart_IdAndMenuItem_Id(
@@ -86,7 +126,9 @@ public class CartService {
             cartItem = CartItem.builder()
                     .cart(cart)
                     .menuItem(menuItem)
-                    .quantity(request.getQuantity())
+                    .quantity(
+                            request.getQuantity()
+                    )
                     .build();
         } else {
             cartItem.setQuantity(
@@ -104,7 +146,9 @@ public class CartService {
      * Get the authenticated user's active cart.
      */
     @Transactional(readOnly = true)
-    public CartResponse getCart(String email) {
+    public CartResponse getCart(
+            String email
+    ) {
         User user = getUserByEmail(email);
 
         Cart cart = cartRepository
@@ -133,14 +177,18 @@ public class CartService {
     ) {
         validateUpdateCartItemRequest(request);
 
-        CartItem cartItem = getCartItemById(cartItemId);
+        CartItem cartItem =
+                getCartItemById(cartItemId);
 
         validateCartOwnership(
                 cartItem.getCart(),
                 email
         );
 
-        cartItem.setQuantity(request.getQuantity());
+        cartItem.setQuantity(
+                request.getQuantity()
+        );
+
         cartItemRepository.save(cartItem);
 
         return buildCartResponse(
@@ -150,18 +198,36 @@ public class CartService {
 
     /**
      * Remove an item from the authenticated user's cart.
+     *
+     * The cart itself remains ACTIVE even when its final
+     * item is removed. An empty ACTIVE cart can later be
+     * reassigned to another restaurant by addItemToCart().
      */
     @Transactional
     public CartResponse removeCartItem(
             String email,
             Long cartItemId
     ) {
-        CartItem cartItem = getCartItemById(cartItemId);
+        CartItem cartItem =
+                getCartItemById(cartItemId);
+
         Cart cart = cartItem.getCart();
 
-        validateCartOwnership(cart, email);
+        validateCartOwnership(
+                cart,
+                email
+        );
 
         cartItemRepository.delete(cartItem);
+
+        /*
+         * Flush ensures that the DELETE is executed before
+         * buildCartResponse() queries the remaining items.
+         *
+         * This prevents the deleted CartItem from accidentally
+         * appearing in the returned response.
+         */
+        cartItemRepository.flush();
 
         return buildCartResponse(cart);
     }
@@ -171,8 +237,8 @@ public class CartService {
     // =========================
 
     /**
-     * Service-layer validation is retained even though the request DTO
-     * also uses Bean Validation.
+     * Service-layer validation is retained even though
+     * the request DTO also uses Bean Validation.
      */
     private void validateAddCartItemRequest(
             AddCartItemRequest request
@@ -189,14 +255,19 @@ public class CartService {
             );
         }
 
-        if (request.getQuantity() == null ||
-                request.getQuantity() <= 0) {
+        if (
+                request.getQuantity() == null
+                        || request.getQuantity() <= 0
+        ) {
             throw new BadRequestException(
                     "Quantity must be greater than zero"
             );
         }
     }
 
+    /**
+     * Validate a cart quantity replacement request.
+     */
     private void validateUpdateCartItemRequest(
             UpdateCartItemRequest request
     ) {
@@ -206,16 +277,26 @@ public class CartService {
             );
         }
 
-        if (request.getQuantity() == null ||
-                request.getQuantity() <= 0) {
+        if (
+                request.getQuantity() == null
+                        || request.getQuantity() <= 0
+        ) {
             throw new BadRequestException(
                     "Quantity must be greater than zero"
             );
         }
     }
 
-    private User getUserByEmail(String email) {
-        if (email == null || email.isBlank()) {
+    /**
+     * Find the currently authenticated user by JWT email.
+     */
+    private User getUserByEmail(
+            String email
+    ) {
+        if (
+                email == null
+                        || email.isBlank()
+        ) {
             throw new BadRequestException(
                     "Authenticated user email is required"
             );
@@ -231,6 +312,9 @@ public class CartService {
                 );
     }
 
+    /**
+     * Find a CartItem by ID.
+     */
     private CartItem getCartItemById(
             Long cartItemId
     ) {
@@ -251,7 +335,8 @@ public class CartService {
     }
 
     /**
-     * A menu item must still be available before it can be added.
+     * A menu item must still be available before
+     * it can be added.
      */
     private void validateMenuItemAvailability(
             MenuItem menuItem
@@ -270,8 +355,10 @@ public class CartService {
     private void validateRestaurantAvailability(
             MenuItem menuItem
     ) {
-        if (menuItem.getRestaurant().getStatus()
-                != RestaurantStatus.OPEN) {
+        if (
+                menuItem.getRestaurant().getStatus()
+                        != RestaurantStatus.OPEN
+        ) {
             throw new ConflictException(
                     "Restaurant is currently unavailable"
             );
@@ -279,7 +366,8 @@ public class CartService {
     }
 
     /**
-     * Create an active cart using the restaurant of the first item.
+     * Create a new active cart using the restaurant
+     * associated with the first menu item.
      */
     private Cart createCart(
             User user,
@@ -297,7 +385,8 @@ public class CartService {
     }
 
     /**
-     * One active cart can only contain items from one restaurant.
+     * A non-empty active cart can only contain items
+     * from one restaurant.
      */
     private void validateRestaurant(
             Cart cart,
@@ -309,9 +398,11 @@ public class CartService {
         Long menuItemRestaurantId =
                 menuItem.getRestaurant().getId();
 
-        if (!cartRestaurantId.equals(
-                menuItemRestaurantId
-        )) {
+        if (
+                !cartRestaurantId.equals(
+                        menuItemRestaurantId
+                )
+        ) {
             throw new ConflictException(
                     "Cart can only contain items from one restaurant"
             );
@@ -319,19 +410,23 @@ public class CartService {
     }
 
     /**
-     * Verify that the current authenticated user owns the cart.
+     * Verify that the current authenticated user
+     * owns the cart.
      *
-     * A 404 response avoids exposing whether another user's cart exists.
+     * A 404 response avoids exposing whether another
+     * user's cart exists.
      */
     private void validateCartOwnership(
             Cart cart,
             String email
     ) {
-        if (cart == null ||
-                cart.getUser() == null ||
-                !cart.getUser()
+        if (
+                cart == null
+                        || cart.getUser() == null
+                        || !cart.getUser()
                         .getEmail()
-                        .equalsIgnoreCase(email)) {
+                        .equalsIgnoreCase(email)
+        ) {
             throw new ResourceNotFoundException(
                     "Cart not found"
             );
@@ -339,31 +434,39 @@ public class CartService {
     }
 
     /**
-     * Convert the cart entity into its API response.
+     * Convert a Cart entity into its API response.
      *
-     * The subtotal and total price are recalculated from the current
-     * menu item price and quantity.
+     * Subtotals and the total price are recalculated
+     * from current menu-item prices and quantities.
      */
     private CartResponse buildCartResponse(
             Cart cart
     ) {
         List<CartItemResponse> itemResponses =
                 cartItemRepository
-                        .findByCart_Id(cart.getId())
+                        .findByCart_Id(
+                                cart.getId()
+                        )
                         .stream()
-                        .map(this::buildCartItemResponse)
+                        .map(
+                                this::buildCartItemResponse
+                        )
                         .toList();
 
         BigDecimal totalPrice = itemResponses
                 .stream()
-                .map(CartItemResponse::getSubtotal)
+                .map(
+                        CartItemResponse::getSubtotal
+                )
                 .reduce(
                         BigDecimal.ZERO,
                         BigDecimal::add
                 );
 
         return CartResponse.builder()
-                .cartId(cart.getId())
+                .cartId(
+                        cart.getId()
+                )
                 .userId(
                         cart.getUser().getId()
                 )
@@ -378,6 +481,9 @@ public class CartService {
                 .build();
     }
 
+    /**
+     * Convert a CartItem entity into its API response.
+     */
     private CartItemResponse buildCartItemResponse(
             CartItem cartItem
     ) {

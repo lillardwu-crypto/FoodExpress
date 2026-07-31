@@ -68,10 +68,21 @@ public class AuthService {
         String accessToken =
                 jwtService.generateToken(userDetails);
     
+        User user = userRepository
+                .findByEmail(normalizedEmail)
+                .orElseThrow(
+                        () -> new IllegalArgumentException(
+                                "User not found"
+                        )
+                );
+    
         return AuthResponse.builder()
                 .accessToken(accessToken)
                 .tokenType("Bearer")
-                .expiresIn(jwtService.getExpirationSeconds())
+                .expiresIn(
+                        jwtService.getExpirationSeconds()
+                )
+                .role(user.getRole())
                 .build();
     }
 }

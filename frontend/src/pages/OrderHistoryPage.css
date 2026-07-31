@@ -1,0 +1,691 @@
+/* =========================================
+   Order History Page
+========================================= */
+
+.order-history-page {
+    width: 100%;
+    min-height: calc(100vh - 72px);
+    padding: 48px 24px 80px;
+    background: #f7f7f7;
+}
+
+.order-history-page,
+.order-history-page * {
+    box-sizing: border-box;
+}
+
+.order-history-header,
+.order-history-list,
+.order-history-status-card,
+.order-history-empty-card {
+    width: 100%;
+    max-width: 1120px;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+/* =========================================
+   Page Header
+========================================= */
+
+.order-history-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 32px;
+    margin-bottom: 30px;
+}
+
+.order-history-header h1 {
+    margin: 4px 0 8px;
+    color: #111111;
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+}
+
+.order-history-header > div > p:last-child {
+    max-width: 620px;
+    margin: 0;
+    color: #666666;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.order-history-eyebrow {
+    margin: 0;
+    color: #e85d04;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.order-history-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-width: 92px;
+    padding: 10px 16px;
+    border: 1px solid #dddddd;
+    border-radius: 999px;
+    color: #4d4d4d;
+    font-size: 0.9rem;
+    font-weight: 700;
+    background: #ffffff;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+/* =========================================
+   Order List
+========================================= */
+
+.order-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+/* =========================================
+   Order Card
+========================================= */
+
+.order-history-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    overflow: hidden;
+    border: 1px solid #e4e4e4;
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.05);
+    transition:
+        border-color 180ms ease,
+        box-shadow 180ms ease,
+        transform 180ms ease;
+}
+
+.order-history-card:hover {
+    border-color: #d4d4d4;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+}
+
+.order-history-card-main {
+    min-width: 0;
+    padding: 26px 28px;
+}
+
+.order-history-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.order-history-number {
+    margin: 0 0 6px;
+    color: #8a8a8a;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.order-history-card-header h2 {
+    margin: 0;
+    color: #171717;
+    font-size: 1.45rem;
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+}
+
+.order-history-date {
+    margin: 7px 0 0;
+    color: #777777;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+/* =========================================
+   Status Badge
+========================================= */
+
+.order-history-status {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.status-pending {
+    border-color: #efd26f;
+    color: #8a6500;
+    background: #fff7d6;
+}
+
+.status-accepted {
+    border-color: #aacaf4;
+    color: #1859a9;
+    background: #eef5ff;
+}
+
+.status-preparing {
+    border-color: #efbc89;
+    color: #a4470a;
+    background: #fff2e6;
+}
+
+.status-ready-for-pickup {
+    border-color: #c7b1ed;
+    color: #6637a3;
+    background: #f5efff;
+}
+
+.status-out-for-delivery {
+    border-color: #98d9e3;
+    color: #087383;
+    background: #eafdff;
+}
+
+.status-delivered {
+    border-color: #9ed8b2;
+    color: #16703a;
+    background: #ecfbf1;
+}
+
+.status-cancelled {
+    border-color: #efaaa3;
+    color: #a7291e;
+    background: #fff0ef;
+}
+
+/* =========================================
+   Order Details
+========================================= */
+
+.order-history-details {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #ededed;
+}
+
+.order-history-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.order-history-detail span {
+    color: #8a8a8a;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.order-history-detail strong {
+    color: #222222;
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+/* =========================================
+   Item Preview
+========================================= */
+
+.order-history-item-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 18px;
+}
+
+.order-history-item-preview span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 6px 11px;
+    border: 1px solid #e8e8e8;
+    border-radius: 999px;
+    color: #555555;
+    font-size: 0.83rem;
+    font-weight: 600;
+    background: #fafafa;
+}
+
+/* =========================================
+   Card Action
+========================================= */
+
+.order-history-card-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 190px;
+    padding: 28px;
+    border-left: 1px solid #ededed;
+    background: #fcfcfc;
+}
+
+.order-history-view-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 46px;
+    padding: 0 18px;
+    border: 1px solid #171717;
+    border-radius: 10px;
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 800;
+    text-decoration: none;
+    background: #171717;
+    transition:
+        color 160ms ease,
+        background 160ms ease,
+        transform 160ms ease;
+}
+
+.order-history-view-link:hover {
+    color: #171717;
+    background: #ffffff;
+    transform: translateX(2px);
+}
+
+.order-history-view-link span {
+    font-size: 1rem;
+    transition: transform 160ms ease;
+}
+
+.order-history-view-link:hover span {
+    transform: translateX(3px);
+}
+
+/* =========================================
+   Loading / Error State
+========================================= */
+
+.order-history-status-card {
+    display: flex;
+    min-height: 260px;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 40px;
+    border: 1px solid #e3e3e3;
+    border-radius: 18px;
+    text-align: center;
+    background: #ffffff;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.05);
+}
+
+.order-history-status-card h1 {
+    margin: 0 0 12px;
+    color: #171717;
+    font-size: 2rem;
+}
+
+.order-history-status-card p {
+    margin: 0;
+    color: #666666;
+}
+
+.order-history-status-card a {
+    display: inline-flex;
+    margin-top: 22px;
+    color: #171717;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.order-history-status-card a:hover {
+    text-decoration: underline;
+}
+
+.order-history-error {
+    color: #b42318 !important;
+}
+
+/* =========================================
+   Empty State
+========================================= */
+
+.order-history-empty-card {
+    display: flex;
+    min-height: 430px;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 60px 30px;
+    border: 1px solid #e3e3e3;
+    border-radius: 20px;
+    text-align: center;
+    background: #ffffff;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.05);
+}
+
+.order-history-empty-icon {
+    display: grid;
+    width: 72px;
+    height: 72px;
+    margin-bottom: 20px;
+    place-items: center;
+    border-radius: 50%;
+    font-size: 2rem;
+    background: #fff1e8;
+}
+
+.order-history-empty-card h1 {
+    margin: 6px 0 12px;
+    color: #171717;
+    font-size: 2rem;
+    font-weight: 800;
+}
+
+.order-history-empty-card > p:not(.order-history-eyebrow) {
+    max-width: 500px;
+    margin: 0;
+    color: #6b6b6b;
+    font-size: 0.98rem;
+    line-height: 1.7;
+}
+
+.order-history-browse-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    margin-top: 26px;
+    padding: 0 22px;
+    border-radius: 10px;
+    color: #ffffff;
+    font-weight: 800;
+    text-decoration: none;
+    background: #171717;
+    transition:
+        background 160ms ease,
+        transform 160ms ease;
+}
+
+.order-history-browse-link:hover {
+    background: #333333;
+    transform: translateY(-1px);
+}
+
+/* =========================================
+   Animation
+========================================= */
+
+.order-history-card {
+    animation: order-card-enter 320ms ease both;
+}
+
+.order-history-card:nth-child(2) {
+    animation-delay: 40ms;
+}
+
+.order-history-card:nth-child(3) {
+    animation-delay: 80ms;
+}
+
+.order-history-card:nth-child(4) {
+    animation-delay: 120ms;
+}
+
+@keyframes order-card-enter {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =========================================
+   Tablet
+========================================= */
+
+@media (max-width: 820px) {
+    .order-history-page {
+        padding: 36px 18px 64px;
+    }
+
+    .order-history-card {
+        grid-template-columns: 1fr;
+    }
+
+    .order-history-card-action {
+        min-width: 0;
+        padding: 18px 28px 24px;
+        border-top: 1px solid #ededed;
+        border-left: none;
+        background: #ffffff;
+    }
+
+    .order-history-view-link {
+        width: 100%;
+    }
+}
+
+/* =========================================
+   Mobile
+========================================= */
+
+@media (max-width: 600px) {
+    .order-history-page {
+        padding: 28px 14px 50px;
+    }
+
+    .order-history-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 18px;
+        margin-bottom: 24px;
+    }
+
+    .order-history-count {
+        min-width: 0;
+    }
+
+    .order-history-card-main {
+        padding: 22px 20px;
+    }
+
+    .order-history-card-header {
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .order-history-details {
+        gap: 28px;
+    }
+
+    .order-history-card-action {
+        padding: 16px 20px 22px;
+    }
+
+    .order-history-empty-card,
+    .order-history-status-card {
+        padding: 40px 22px;
+    }
+}
+
+/* =========================================
+   Pagination
+========================================= */
+
+.order-pagination-section {
+    width: 100%;
+    max-width: 1120px;
+    margin: 30px auto 0;
+}
+
+.order-pagination-summary {
+    margin: 0 0 14px;
+    color: #777777;
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.order-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+}
+
+.order-pagination-pages {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.order-pagination-number,
+.order-pagination-arrow {
+    border: 1px solid #dddddd;
+    color: #333333;
+    font-family: inherit;
+    font-weight: 700;
+    background: #ffffff;
+    cursor: pointer;
+    transition:
+        border-color 160ms ease,
+        color 160ms ease,
+        background 160ms ease,
+        transform 160ms ease;
+}
+
+.order-pagination-number {
+    display: inline-flex;
+    width: 42px;
+    height: 42px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    font-size: 0.9rem;
+}
+
+.order-pagination-number:hover {
+    border-color: #171717;
+    transform: translateY(-1px);
+}
+
+.order-pagination-number.active {
+    border-color: #171717;
+    color: #ffffff;
+    background: #171717;
+}
+
+.order-pagination-arrow {
+    min-height: 42px;
+    padding: 0 16px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+}
+
+.order-pagination-arrow:hover:not(:disabled) {
+    border-color: #171717;
+    color: #ffffff;
+    background: #171717;
+    transform: translateY(-1px);
+}
+
+.order-pagination-arrow:disabled {
+    color: #b1b1b1;
+    background: #f1f1f1;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* =========================================
+   Pagination Responsive
+========================================= */
+
+@media (max-width: 600px) {
+    .order-pagination {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .order-pagination-pages {
+        order: -1;
+        width: 100%;
+    }
+
+    .order-pagination-arrow {
+        flex: 1;
+    }
+}
+
+.order-summary-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.order-cancel-button {
+    width: 100%;
+    padding: 13px 18px;
+    border: 1px solid #d92d20;
+    border-radius: 12px;
+    color: #b42318;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 800;
+    background: #ffffff;
+    cursor: pointer;
+    transition:
+        color 0.2s ease,
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.order-cancel-button:hover:not(:disabled) {
+    border-color: #b42318;
+    color: #ffffff;
+    background: #b42318;
+    transform: translateY(-1px);
+}
+
+.order-cancel-button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.order-cancel-error {
+    margin-bottom: 24px;
+    padding: 14px 18px;
+    border: 1px solid #f4b4ad;
+    border-radius: 12px;
+    color: #b42318;
+    font-size: 0.92rem;
+    font-weight: 600;
+    background: #fff4f2;
+}

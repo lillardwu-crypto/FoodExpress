@@ -64,10 +64,13 @@ public class SecurityConfig {
                                 "/api/restaurants/**",
                                 "/api/menu-items/**"
                         ).permitAll()
-
+                
+                        .requestMatchers("/api/merchant/**")
+                        .hasRole("MERCHANT")
+                
                         .requestMatchers("/api/driver/**")
                         .hasRole("DRIVER")
-
+                
                         .anyRequest()
                         .authenticated()
                 )

@@ -47,3 +47,9 @@
     .navbar-account-link:hover {
         color: #06a85f;
     }
+
+    .navbar-user-email {
+      color: #666;
+      font-size: 0.9rem;
+      white-space: nowrap;
+  }

@@ -1,19 +1,18 @@
 import { Link } from "react-router-dom";
 import { imageMap } from "../utils/imageMap";
 import "./RestaurantCard.css";
+
 function RestaurantCard({ restaurant }) {
-    const restaurantImage = imageMap[restaurant.imageUrl];
+    const restaurantImage =
+        imageMap[restaurant.imageUrl] ||
+        imageMap["burger.jpg"];
 
     return (
         <Link
             to={`/restaurants/${restaurant.id}`}
-            style={{
-                textDecoration: "none",
-                color: "inherit"
-            }}
+            className="restaurant-card-link"
         >
             <article className="restaurant-card">
-
                 <div className="restaurant-image">
                     <img
                         src={restaurantImage}
@@ -26,15 +25,12 @@ function RestaurantCard({ restaurant }) {
                 </div>
 
                 <div className="restaurant-card-content">
-
                     <div className="restaurant-card-header">
-
                         <h3>{restaurant.name}</h3>
 
                         <span className="restaurant-rating">
                             ⭐ {restaurant.rating}
                         </span>
-
                     </div>
 
                     <p className="restaurant-category">
@@ -42,19 +38,18 @@ function RestaurantCard({ restaurant }) {
                     </p>
 
                     <div className="restaurant-meta">
-
                         <span>
-                            🚴 Delivery ${Number(restaurant.deliveryFee).toFixed(2)}
+                            🚴 Delivery $
+                            {Number(
+                                restaurant.deliveryFee
+                            ).toFixed(2)}
                         </span>
 
                         <span>•</span>
 
                         <span>{restaurant.status}</span>
-
                     </div>
-
                 </div>
-
             </article>
         </Link>
     );

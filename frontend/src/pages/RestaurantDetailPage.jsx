@@ -8,7 +8,7 @@ import { imageMap } from "../utils/imageMap";
 import "./RestaurantDetailPage.css";
 
 function RestaurantDetailPage() {
-    const { id } = useParams();
+    const { restaurantId } = useParams();
 
     const [restaurant, setRestaurant] = useState(null);
     const [menuItems, setMenuItems] = useState([]);
@@ -32,8 +32,8 @@ function RestaurantDetailPage() {
                 setPageError("");
 
                 const [restaurantData, menuData] = await Promise.all([
-                    getRestaurantById(id),
-                    getMenuItemsByRestaurant(id),
+                    getRestaurantById(restaurantId),
+                    getMenuItemsByRestaurant(restaurantId),
                 ]);
 
                 setRestaurant(restaurantData);
@@ -54,7 +54,7 @@ function RestaurantDetailPage() {
         }
 
         fetchRestaurantDetail();
-    }, [id]);
+    }, [restaurantId]);
 
     async function handleAddToCart(menuItemId) {
         try {

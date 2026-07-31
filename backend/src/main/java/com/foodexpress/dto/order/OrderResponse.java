@@ -1,7 +1,11 @@
 package com.foodexpress.dto.order;
 
 import com.foodexpress.entity.OrderStatus;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -29,6 +33,19 @@ public class OrderResponse {
     private BigDecimal totalPrice;
 
     private List<OrderItemResponse> items;
+
+    // Delivery address snapshot
+    private String deliveryRecipientName;
+
+    private String deliveryPhone;
+
+    private String deliveryStreet;
+
+    private String deliveryCity;
+
+    private String deliveryState;
+
+    private String deliveryZipCode;
 
     private LocalDateTime createdAt;
 

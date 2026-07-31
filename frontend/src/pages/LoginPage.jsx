@@ -1,16 +1,48 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import {
+    useState,
+} from "react";
 
-import { login } from "../api/authApi";
+import {
+    Link,
+    useLocation,
+    useNavigate,
+} from "react-router-dom";
+
+import {
+    login,
+} from "../api/authApi";
+
 import "./LoginPage.css";
+
 function LoginPage() {
-    const navigate = useNavigate();
+    const navigate =
+        useNavigate();
 
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+    const location =
+        useLocation();
 
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
+    const registrationSuccessful =
+        location.state
+            ?.registrationSuccessful ===
+        true;
+
+    const registeredEmail =
+        location.state
+            ?.registeredEmail || "";
+
+    const [email, setEmail] =
+        useState(
+            registeredEmail
+        );
+
+    const [password, setPassword] =
+        useState("");
+
+    const [loading, setLoading] =
+        useState(false);
+
+    const [error, setError] =
+        useState("");
 
     async function handleSubmit(event) {
         event.preventDefault();
@@ -19,12 +51,22 @@ function LoginPage() {
             setLoading(true);
             setError("");
 
-            const data = await login(
-                email,
-                password
-            );
+            const normalizedEmail =
+                email
+                    .trim()
+                    .toLowerCase();
 
-            const token = data.accessToken;
+            const data =
+                await login(
+                    normalizedEmail,
+                    password
+                );
+
+            const token =
+                data.accessToken;
+
+            const role =
+                data.role;
 
             if (!token) {
                 throw new Error(
@@ -32,25 +74,50 @@ function LoginPage() {
                 );
             }
 
-            // 保存 JWT
+            if (!role) {
+                throw new Error(
+                    "Login succeeded, but no user role was returned."
+                );
+            }
+
             localStorage.setItem(
                 "token",
                 token
             );
 
-            // 保存用户邮箱，用于 Navbar 显示
             localStorage.setItem(
                 "userEmail",
-                email
+                normalizedEmail
             );
 
-            // 通知 Navbar 登录状态已经发生变化
+            localStorage.setItem(
+                "userRole",
+                role
+            );
+
             window.dispatchEvent(
-                new Event("authChanged")
+                new Event(
+                    "authChanged"
+                )
             );
 
-            // 登录成功后返回首页
-            navigate("/");
+            if (
+                role ===
+                "MERCHANT"
+            ) {
+                navigate(
+                    "/merchant/orders"
+                );
+            } else if (
+                role ===
+                "DRIVER"
+            ) {
+                navigate(
+                    "/driver/orders"
+                );
+            } else {
+                navigate("/");
+            }
         } catch (error) {
             console.error(
                 "Login failed:",
@@ -58,7 +125,9 @@ function LoginPage() {
             );
 
             setError(
-                error.response?.data?.message ||
+                error.response
+                    ?.data
+                    ?.message ||
                 error.message ||
                 "Login failed. Please check your email and password."
             );
@@ -77,8 +146,16 @@ function LoginPage() {
                 <h1>Sign in</h1>
 
                 <p className="login-subtitle">
-                    Sign in to order food and manage your cart.
+                    Sign in to access your
+                    FoodExpress account.
                 </p>
+
+                {registrationSuccessful && (
+                    <p className="login-success-message">
+                        Account created successfully.
+                        You can now sign in.
+                    </p>
+                )}
 
                 {error && (
                     <p className="login-error-message">
@@ -88,7 +165,9 @@ function LoginPage() {
 
                 <form
                     className="login-form"
-                    onSubmit={handleSubmit}
+                    onSubmit={
+                        handleSubmit
+                    }
                 >
                     <div className="login-form-group">
                         <label htmlFor="email">
@@ -98,10 +177,16 @@ function LoginPage() {
                         <input
                             id="email"
                             type="email"
-                            value={email}
-                            onChange={(event) =>
+                            value={
+                                email
+                            }
+                            onChange={(
+                                event
+                            ) =>
                                 setEmail(
-                                    event.target.value
+                                    event
+                                        .target
+                                        .value
                                 )
                             }
                             placeholder="Enter your email"
@@ -118,10 +203,16 @@ function LoginPage() {
                         <input
                             id="password"
                             type="password"
-                            value={password}
-                            onChange={(event) =>
+                            value={
+                                password
+                            }
+                            onChange={(
+                                event
+                            ) =>
                                 setPassword(
-                                    event.target.value
+                                    event
+                                        .target
+                                        .value
                                 )
                             }
                             placeholder="Enter your password"
@@ -133,13 +224,22 @@ function LoginPage() {
                     <button
                         type="submit"
                         className="login-button"
-                        disabled={loading}
+                        disabled={
+                            loading
+                        }
                     >
                         {loading
                             ? "Signing in..."
                             : "Sign in"}
                     </button>
                 </form>
+
+                <p className="login-register-prompt">
+                    Don&apos;t have an account?{" "}
+                    <Link to="/register">
+                        Create one
+                    </Link>
+                </p>
             </div>
         </section>
     );

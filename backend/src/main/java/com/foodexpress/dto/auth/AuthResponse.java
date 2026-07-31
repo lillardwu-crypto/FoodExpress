@@ -1,5 +1,7 @@
 package com.foodexpress.dto.auth;
 
+import com.foodexpress.entity.UserRole;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,4 +18,6 @@ public class AuthResponse {
     private String tokenType;
 
     private Long expiresIn;
+
+    private UserRole role;
 }

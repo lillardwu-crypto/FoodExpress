@@ -2,7 +2,6 @@ package com.foodexpress.controller;
 
 import com.foodexpress.dto.order.CheckoutRequest;
 import com.foodexpress.dto.order.OrderResponse;
-import com.foodexpress.dto.order.UpdateOrderStatusRequest;
 import com.foodexpress.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,10 +34,11 @@ public class OrderController {
     ) {
         String email = authentication.getName();
 
-        OrderResponse response = orderService.checkout(
-                email,
-                request.getAddressId()
-        );
+        OrderResponse response =
+                orderService.checkout(
+                        email,
+                        request.getAddressId()
+                );
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -46,7 +46,7 @@ public class OrderController {
     }
 
     /**
-     * 查询当前登录用户的所有历史订单。
+     * 查询当前登录用户的全部历史订单。
      *
      * GET /api/orders
      */
@@ -63,10 +63,11 @@ public class OrderController {
     }
 
     /**
-     * 查询当前登录用户的某个订单详情。
+     * 查询当前登录用户的订单详情。
      *
-     * Service 层必须验证该订单属于当前用户，
-     * 防止用户通过修改 orderId 查看其他用户的订单。
+     * Service 层负责验证：
+     * 1. 当前用户存在
+     * 2. 订单属于当前用户
      *
      * GET /api/orders/{orderId}
      */
@@ -77,44 +78,39 @@ public class OrderController {
     ) {
         String email = authentication.getName();
 
-        OrderResponse response = orderService.getOrder(
-                email,
-                orderId
-        );
+        OrderResponse response =
+                orderService.getOrder(
+                        email,
+                        orderId
+                );
 
         return ResponseEntity.ok(response);
     }
 
     /**
-     * 更新订单状态。
+     * 当前登录用户取消自己的订单。
      *
-     * 当前先把登录用户邮箱传入 Service，
-     * 后续可以根据用户角色限制不同的状态操作：
+     * 当前阶段仅允许：
      *
-     * CUSTOMER:
-     * 只能取消自己的订单
+     * PENDING -> CANCELLED
+     * ACCEPTED -> CANCELLED
      *
-     * RESTAURANT_OWNER:
-     * 只能更新自己餐厅的订单
+     * Merchant、Driver 的状态更新
+     * 将由独立 Controller 提供。
      *
-     * DRIVER:
-     * 只能更新自己配送的订单
-     *
-     * PATCH /api/orders/{orderId}/status
+     * PATCH /api/orders/{orderId}/cancel
      */
-    @PatchMapping("/{orderId}/status")
-    public ResponseEntity<OrderResponse> updateOrderStatus(
+    @PatchMapping("/{orderId}/cancel")
+    public ResponseEntity<OrderResponse> cancelOrder(
             Authentication authentication,
-            @PathVariable Long orderId,
-            @Valid @RequestBody UpdateOrderStatusRequest request
+            @PathVariable Long orderId
     ) {
         String email = authentication.getName();
 
         OrderResponse response =
-                orderService.updateOrderStatus(
+                orderService.cancelCustomerOrder(
                         email,
-                        orderId,
-                        request.getStatus()
+                        orderId
                 );
 
         return ResponseEntity.ok(response);

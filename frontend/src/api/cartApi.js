@@ -19,3 +19,23 @@ export async function getCart() {
 
     return response.data;
 }
+
+export async function updateCartItem(cartItemId, quantity) {
+    const response = await apiClient.put(
+        `/api/carts/items/${cartItemId}`,
+        {
+            quantity,
+        }
+    );
+
+    return response.data;
+}
+
+export async function removeCartItem(cartItemId) {
+    const response = await apiClient.delete(
+        `/api/carts/items/${cartItemId}`
+    );
+
+    return response.data;
+}
+

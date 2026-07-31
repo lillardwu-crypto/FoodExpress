@@ -1,5 +1,6 @@
 package com.foodexpress.service;
 
+import com.foodexpress.dto.restaurant.RestaurantResponse;
 import com.foodexpress.entity.Restaurant;
 import com.foodexpress.entity.RestaurantStatus;
 import com.foodexpress.exception.ResourceNotFoundException;
@@ -17,12 +18,16 @@ public class RestaurantService {
 
     private final RestaurantRepository restaurantRepository;
 
-    public Restaurant createSampleRestaurant() {
+    /**
+     * Creates one sample restaurant only when the database
+     * does not already contain any restaurant records.
+     */
+    public RestaurantResponse createSampleRestaurant() {
 
         List<Restaurant> restaurants = restaurantRepository.findAll();
 
         if (!restaurants.isEmpty()) {
-            return restaurants.get(0);
+            return toRestaurantResponse(restaurants.get(0));
         }
 
         Restaurant restaurant = Restaurant.builder()
@@ -41,19 +46,62 @@ public class RestaurantService {
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        return restaurantRepository.save(restaurant);
+        Restaurant savedRestaurant = restaurantRepository.save(restaurant);
+
+        return toRestaurantResponse(savedRestaurant);
     }
 
-    public List<Restaurant> getAllRestaurants() {
-        return restaurantRepository.findAll();
+    /**
+     * Returns all restaurants as API response DTOs.
+     */
+    public List<RestaurantResponse> getAllRestaurants() {
+        return restaurantRepository.findAll()
+                .stream()
+                .map(this::toRestaurantResponse)
+                .toList();
     }
 
-    public Restaurant getRestaurantById(Long id) {
-        return restaurantRepository.findById(id)
+    /**
+     * Returns one restaurant by id.
+     */
+    public RestaurantResponse getRestaurantById(Long id) {
+
+        Restaurant restaurant = restaurantRepository.findById(id)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "Restaurant not found with id: " + id
                         )
                 );
+
+        return toRestaurantResponse(restaurant);
+    }
+
+    /**
+     * Converts the persistence entity into the public API response DTO.
+     */
+    private RestaurantResponse toRestaurantResponse(Restaurant restaurant) {
+
+        return RestaurantResponse.builder()
+                .id(restaurant.getId())
+                .name(restaurant.getName())
+                .address(restaurant.getAddress())
+                .phone(restaurant.getPhone())
+                .imageUrl(restaurant.getImageUrl())
+                .rating(restaurant.getRating())
+                .category(restaurant.getCategory())
+                .deliveryTime(restaurant.getDeliveryTime())
+                .deliveryFee(restaurant.getDeliveryFee())
+                .status(
+                        restaurant.getStatus() == null
+                                ? null
+                                : restaurant.getStatus().name()
+                )
+                .latitude(restaurant.getLatitude())
+                .longitude(restaurant.getLongitude())
+                .build();
     }
 }
+
+
+
+

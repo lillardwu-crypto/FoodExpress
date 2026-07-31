@@ -14,6 +14,18 @@ import {
     getOrderById,
 } from "../api/orderApi";
 
+import {
+    getRestaurantById,
+} from "../api/restaurantApi";
+
+import OrderTimeline from "../components/OrderTimeline";
+import DeliveryTrackingMap from "../components/DeliveryTrackingMap";
+
+import {
+    connectOrderTracking,
+    disconnectOrderTracking,
+} from "../services/orderTrackingSocket";
+
 import "./OrderDetailPage.css";
 
 function OrderDetailPage() {
@@ -21,6 +33,9 @@ function OrderDetailPage() {
     const location = useLocation();
 
     const [order, setOrder] =
+        useState(null);
+
+    const [restaurant, setRestaurant] =
         useState(null);
 
     const [isLoading, setIsLoading] =
@@ -36,14 +51,27 @@ function OrderDetailPage() {
         setErrorMessage,
     ] = useState("");
 
+    const [
+        isTrackingConnected,
+        setIsTrackingConnected,
+    ] = useState(false);
+
     const orderPlaced =
         location.state?.orderPlaced === true;
 
+    /*
+     * Loads the initial order state through REST.
+     *
+     * After loading the order, the page uses
+     * restaurantId to load the Restaurant DTO
+     * containing latitude and longitude.
+     */
     useEffect(() => {
-        async function loadOrder() {
+        async function loadOrderDetail() {
             try {
                 setIsLoading(true);
                 setErrorMessage("");
+                setRestaurant(null);
 
                 const orderData =
                     await getOrderById(
@@ -51,9 +79,18 @@ function OrderDetailPage() {
                     );
 
                 setOrder(orderData);
+
+                const restaurantData =
+                    await getRestaurantById(
+                        orderData.restaurantId
+                    );
+
+                setRestaurant(
+                    restaurantData
+                );
             } catch (error) {
                 console.error(
-                    "Failed to load order:",
+                    "Failed to load order detail:",
                     error
                 );
 
@@ -67,7 +104,90 @@ function OrderDetailPage() {
             }
         }
 
-        loadOrder();
+        loadOrderDetail();
+    }, [orderId]);
+
+    /*
+     * Subscribes to real-time order tracking events.
+     *
+     * REST provides the initial order state.
+     * WebSocket provides subsequent status updates.
+     */
+    useEffect(() => {
+        if (!orderId) {
+            return undefined;
+        }
+
+        const client =
+            connectOrderTracking({
+                orderId,
+
+                onConnect: () => {
+                    setIsTrackingConnected(
+                        true
+                    );
+
+                    console.info(
+                        `Tracking connected for order ${orderId}`
+                    );
+                },
+
+                onMessage: (
+                    trackingMessage
+                ) => {
+                    if (
+                        String(
+                            trackingMessage.orderId
+                        ) !==
+                        String(orderId)
+                    ) {
+                        return;
+                    }
+
+                    setOrder(
+                        (
+                            currentOrder
+                        ) => {
+                            if (
+                                !currentOrder
+                            ) {
+                                return currentOrder;
+                            }
+
+                            return {
+                                ...currentOrder,
+
+                                status:
+                                    trackingMessage.status ??
+                                    currentOrder.status,
+                            };
+                        }
+                    );
+                },
+
+                onDisconnect: () => {
+                    setIsTrackingConnected(
+                        false
+                    );
+                },
+
+                onError: (error) => {
+                    console.error(
+                        "Order tracking connection error:",
+                        error
+                    );
+                },
+            });
+
+        return () => {
+            setIsTrackingConnected(
+                false
+            );
+
+            void disconnectOrderTracking(
+                client
+            );
+        };
     }, [orderId]);
 
     function getStatusClass(status) {
@@ -90,7 +210,9 @@ function OrderDetailPage() {
             .split("_")
             .map(
                 (word) =>
-                    word.charAt(0).toUpperCase() +
+                    word
+                        .charAt(0)
+                        .toUpperCase() +
                     word.slice(1)
             )
             .join(" ");
@@ -159,7 +281,9 @@ function OrderDetailPage() {
         return (
             <main className="order-detail-page">
                 <div className="order-detail-status-card">
-                    <p>Loading order...</p>
+                    <p>
+                        Loading order...
+                    </p>
                 </div>
             </main>
         );
@@ -220,7 +344,9 @@ function OrderDetailPage() {
 
                             <p>
                                 Your order has been sent to{" "}
-                                {order.restaurantName}.
+                                {
+                                    order.restaurantName
+                                }.
                             </p>
                         </div>
 
@@ -244,11 +370,30 @@ function OrderDetailPage() {
                     </p>
 
                     <h1>
-                        Order #{order.orderId}
+                        Order #
+                        {order.orderId}
                     </h1>
 
                     <p>
-                        {order.restaurantName}
+                        {
+                            order.restaurantName
+                        }
+                    </p>
+
+                    <p
+                        className={
+                            isTrackingConnected
+                                ? "tracking-connection tracking-connected"
+                                : "tracking-connection tracking-disconnected"
+                        }
+                    >
+                        <span
+                            className="tracking-connection-dot"
+                        />
+
+                        {isTrackingConnected
+                            ? "Live updates connected"
+                            : "Connecting to live updates..."}
                     </p>
                 </div>
 
@@ -297,6 +442,7 @@ function OrderDetailPage() {
                                                     item.quantity
                                                 }
                                                 {" × $"}
+
                                                 {Number(
                                                     item.unitPrice
                                                 ).toFixed(
@@ -307,6 +453,7 @@ function OrderDetailPage() {
 
                                         <strong>
                                             $
+
                                             {Number(
                                                 item.subtotal
                                             ).toFixed(
@@ -318,6 +465,22 @@ function OrderDetailPage() {
                             )}
                         </div>
                     </div>
+
+                    <OrderTimeline
+                        status={
+                            order.status
+                        }
+                    />
+
+                    <DeliveryTrackingMap
+                        restaurant={
+                            restaurant
+                        }
+                        order={
+                            order
+                        }
+                        status={order.status}
+                    />
 
                     <div className="order-detail-card">
                         <div className="order-card-title">
@@ -344,9 +507,16 @@ function OrderDetailPage() {
                             </p>
 
                             <p>
-                                {order.deliveryCity},{" "}
-                                {order.deliveryState}{" "}
-                                {order.deliveryZipCode}
+                                {
+                                    order.deliveryCity
+                                }
+                                ,{" "}
+                                {
+                                    order.deliveryState
+                                }{" "}
+                                {
+                                    order.deliveryZipCode
+                                }
                             </p>
 
                             <p>
@@ -359,7 +529,9 @@ function OrderDetailPage() {
                 </section>
 
                 <aside className="order-total-card">
-                    <h2>Order summary</h2>
+                    <h2>
+                        Order summary
+                    </h2>
 
                     <div className="order-total-row">
                         <span>
@@ -374,20 +546,26 @@ function OrderDetailPage() {
                     </div>
 
                     <div className="order-total-row">
-                        <span>Items</span>
+                        <span>
+                            Items
+                        </span>
 
                         <strong>
                             {
                                 totalItemQuantity
                             }
-                            {totalItemQuantity === 1
+
+                            {totalItemQuantity ===
+                            1
                                 ? " item"
                                 : " items"}
                         </strong>
                     </div>
 
                     <div className="order-total-row">
-                        <span>Status</span>
+                        <span>
+                            Status
+                        </span>
 
                         <strong
                             className={
@@ -403,20 +581,27 @@ function OrderDetailPage() {
                     <div className="order-total-divider" />
 
                     <div className="order-total-row order-grand-total">
-                        <span>Total</span>
+                        <span>
+                            Total
+                        </span>
 
                         <strong>
                             $
+
                             {Number(
                                 order.totalPrice
-                            ).toFixed(2)}
+                            ).toFixed(
+                                2
+                            )}
                         </strong>
                     </div>
 
                     <div className="order-total-divider" />
 
                     <div className="order-time-section">
-                        <span>Placed</span>
+                        <span>
+                            Placed
+                        </span>
 
                         <strong>
                             {formatOrderTime(

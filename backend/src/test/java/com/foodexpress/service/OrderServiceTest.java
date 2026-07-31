@@ -1,6 +1,7 @@
 package com.foodexpress.service;
 
 import com.foodexpress.dto.order.OrderResponse;
+import com.foodexpress.dto.tracking.OrderTrackingMessage;
 import com.foodexpress.entity.Order;
 import com.foodexpress.entity.OrderStatus;
 import com.foodexpress.entity.Restaurant;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -26,6 +28,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -44,6 +47,9 @@ class OrderServiceTest {
 
     private static final Long ORDER_ID =
             1L;
+
+    private static final String TRACKING_DESTINATION =
+            "/topic/orders/" + ORDER_ID;
 
     @Mock
     private RestaurantRepository restaurantRepository;
@@ -64,6 +70,9 @@ class OrderServiceTest {
     private AddressRepository addressRepository;
 
     @Mock
+    private SimpMessagingTemplate messagingTemplate;
+
+    @Mock
     private User user;
 
     private OrderService orderService;
@@ -76,7 +85,8 @@ class OrderServiceTest {
                 cartItemRepository,
                 userRepository,
                 addressRepository,
-                restaurantRepository
+                restaurantRepository,
+                messagingTemplate
         );
     }
 
@@ -130,6 +140,14 @@ class OrderServiceTest {
 
         verify(orderRepository)
                 .save(order);
+
+        verify(messagingTemplate)
+                .convertAndSend(
+                        eq(TRACKING_DESTINATION),
+                        any(
+                                OrderTrackingMessage.class
+                        )
+                );
     }
 
     /**
@@ -177,6 +195,14 @@ class OrderServiceTest {
 
         verify(orderRepository)
                 .save(order);
+
+        verify(messagingTemplate)
+                .convertAndSend(
+                        eq(TRACKING_DESTINATION),
+                        any(
+                                OrderTrackingMessage.class
+                        )
+                );
     }
 
     /**
@@ -222,6 +248,16 @@ class OrderServiceTest {
                 never()
         ).save(
                 any(Order.class)
+        );
+
+        verify(
+                messagingTemplate,
+                never()
+        ).convertAndSend(
+                any(String.class),
+                any(
+                        OrderTrackingMessage.class
+                )
         );
     }
 
@@ -269,6 +305,16 @@ class OrderServiceTest {
         ).save(
                 any(Order.class)
         );
+
+        verify(
+                messagingTemplate,
+                never()
+        ).convertAndSend(
+                any(String.class),
+                any(
+                        OrderTrackingMessage.class
+                )
+        );
     }
 
     /**
@@ -304,6 +350,16 @@ class OrderServiceTest {
                 never()
         ).save(
                 any(Order.class)
+        );
+
+        verify(
+                messagingTemplate,
+                never()
+        ).convertAndSend(
+                any(String.class),
+                any(
+                        OrderTrackingMessage.class
+                )
         );
     }
 

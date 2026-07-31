@@ -14,6 +14,9 @@ curl -X POST http://localhost:8080/api/auth/login \
 
   }'
 
+  merchant@example.com
+  driver@example.com
+
 
 TOKEN="eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkYXk5dGVzdEBleGFtcGxlLmNvbSIsImlhdCI6MTc4NDY3NTQ2MCwiZXhwIjoxNzg0Njc5MDYwfQ.DgxBzWcXp9mDwgqa__MK2Dhl2slJZHCIqnx3pYcZNN0"
 

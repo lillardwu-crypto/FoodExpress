@@ -2,6 +2,7 @@ package com.foodexpress.service;
 
 import com.foodexpress.dto.order.OrderItemResponse;
 import com.foodexpress.dto.order.OrderResponse;
+import com.foodexpress.dto.tracking.OrderTrackingMessage;
 import com.foodexpress.entity.Address;
 import com.foodexpress.entity.Cart;
 import com.foodexpress.entity.CartItem;
@@ -24,8 +25,11 @@ import com.foodexpress.repository.OrderRepository;
 import com.foodexpress.repository.RestaurantRepository;
 import com.foodexpress.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -40,6 +44,7 @@ public class OrderService {
     private final UserRepository userRepository;
     private final AddressRepository addressRepository;
     private final RestaurantRepository restaurantRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     // =====================================
     // Customer business methods
@@ -210,7 +215,12 @@ public class OrderService {
 
         cartRepository.save(cart);
 
-        // 13. 返回订单响应
+        // 13. 事务提交成功后广播订单状态
+        publishOrderTrackingAfterCommit(
+                savedOrder
+        );
+
+        // 14. 返回订单响应
         return buildOrderResponse(savedOrder);
     }
 
@@ -298,10 +308,14 @@ public class OrderService {
         Order savedOrder =
                 orderRepository.save(order);
 
+        publishOrderTrackingAfterCommit(
+                savedOrder
+        );
+
         return buildOrderResponse(savedOrder);
     }
 
-    // =====================================
+            // =====================================
     // Merchant business methods
     // =====================================
 
@@ -431,10 +445,16 @@ public class OrderService {
         Order savedOrder =
                 orderRepository.save(order);
 
+        // 8. 事务提交成功后广播订单状态
+        publishOrderTrackingAfterCommit(
+                savedOrder
+        );
+
+        // 9. 返回订单响应
         return buildOrderResponse(savedOrder);
     }
 
-    // =====================================
+            // =====================================
     // Driver business methods
     // =====================================
 
@@ -520,6 +540,12 @@ public class OrderService {
         Order savedOrder =
                 orderRepository.save(order);
 
+        // 6. 事务提交成功后广播接单事件
+        publishOrderTrackingAfterCommit(
+                savedOrder
+        );
+
+        // 7. 返回订单响应
         return buildOrderResponse(savedOrder);
     }
 
@@ -629,10 +655,16 @@ public class OrderService {
         Order savedOrder =
                 orderRepository.saveAndFlush(order);
 
+        // 7. 事务提交成功后广播订单状态
+        publishOrderTrackingAfterCommit(
+                savedOrder
+        );
+
+        // 8. 返回订单响应
         return buildOrderResponse(savedOrder);
     }
 
-    // =====================================
+            // =====================================
     // User and ownership helper methods
     // =====================================
 
@@ -640,296 +672,377 @@ public class OrderService {
      * 根据 JWT 中的邮箱查询当前登录用户。
      */
     private User getUserByEmail(
-            String email
+        String email
+) {
+    if (
+            email == null
+                    || email.isBlank()
     ) {
-        if (
-                email == null
-                        || email.isBlank()
-        ) {
-            throw new BadRequestException(
-                    "Authenticated user email is required"
-            );
-        }
+        throw new BadRequestException(
+                "Authenticated user email is required"
+        );
+    }
 
-        return userRepository
-                .findByEmail(email)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "User not found with email: "
-                                        + email
-                        )
+    return userRepository
+            .findByEmail(email)
+            .orElseThrow(() ->
+                    new ResourceNotFoundException(
+                            "User not found with email: "
+                                    + email
+                    )
+            );
+}
+
+/**
+ * 查询当前用户，并验证当前用户是 Merchant。
+ */
+private User getMerchantByEmail(
+        String email
+) {
+    User merchant =
+            getUserByEmail(email);
+
+    if (
+            merchant.getRole()
+                    != UserRole.MERCHANT
+    ) {
+        throw new ConflictException(
+                "Current user is not a merchant"
+        );
+    }
+
+    return merchant;
+}
+
+/**
+ * 查询当前用户，并验证当前用户是 Driver。
+ */
+private User getDriverByEmail(
+        String email
+) {
+    User driver =
+            getUserByEmail(email);
+
+    if (
+            driver.getRole()
+                    != UserRole.DRIVER
+    ) {
+        throw new ConflictException(
+                "Current user is not a driver"
+        );
+    }
+
+    return driver;
+}
+
+/**
+ * 查询当前 Merchant 所拥有的餐厅。
+ */
+private Restaurant getRestaurantOwnedByMerchant(
+        User merchant
+) {
+    return restaurantRepository
+            .findByOwner_Id(
+                    merchant.getId()
+            )
+            .orElseThrow(() ->
+                    new ResourceNotFoundException(
+                            "Restaurant not found for merchant: "
+                                    + merchant.getEmail()
+                    )
+            );
+}
+
+/**
+ * 查询订单，并验证订单属于当前登录用户。
+ *
+ * 对于不属于当前用户的订单同样返回 404，
+ * 避免泄露其他用户的订单是否存在。
+ */
+private Order getOrderOwnedByUser(
+        Long orderId,
+        Long userId
+) {
+    if (orderId == null) {
+        throw new BadRequestException(
+                "Order id is required"
+        );
+    }
+
+    Order order = orderRepository
+            .findById(orderId)
+            .orElseThrow(() ->
+                    new ResourceNotFoundException(
+                            "Order not found with id: "
+                                    + orderId
+                    )
+            );
+
+    if (
+            !order
+                    .getUser()
+                    .getId()
+                    .equals(userId)
+    ) {
+        throw new ResourceNotFoundException(
+                "Order not found with id: "
+                        + orderId
+        );
+    }
+
+    return order;
+}
+
+// =====================================
+// Order state machine helper methods
+// =====================================
+
+/**
+ * Merchant 只负责餐厅处理阶段：
+ *
+ * PENDING -> ACCEPTED
+ * ACCEPTED -> PREPARING
+ * PREPARING -> READY_FOR_PICKUP
+ */
+private boolean canMerchantTransition(
+        OrderStatus currentStatus,
+        OrderStatus newStatus
+) {
+    return switch (currentStatus) {
+        case PENDING ->
+                newStatus
+                        == OrderStatus.ACCEPTED;
+
+        case ACCEPTED ->
+                newStatus
+                        == OrderStatus.PREPARING;
+
+        case PREPARING ->
+                newStatus
+                        == OrderStatus.READY_FOR_PICKUP;
+
+        case READY_FOR_PICKUP,
+             OUT_FOR_DELIVERY,
+             DELIVERED,
+             CANCELLED -> false;
+    };
+}
+
+/**
+ * Driver 只负责配送阶段：
+ *
+ * READY_FOR_PICKUP -> OUT_FOR_DELIVERY
+ * OUT_FOR_DELIVERY -> DELIVERED
+ */
+private boolean canDriverTransition(
+        OrderStatus currentStatus,
+        OrderStatus newStatus
+) {
+    return switch (currentStatus) {
+        case READY_FOR_PICKUP ->
+                newStatus
+                        == OrderStatus.OUT_FOR_DELIVERY;
+
+        case OUT_FOR_DELIVERY ->
+                newStatus
+                        == OrderStatus.DELIVERED;
+
+        case PENDING,
+             ACCEPTED,
+             PREPARING,
+             DELIVERED,
+             CANCELLED -> false;
+    };
+}
+
+// =====================================
+// WebSocket tracking helper methods
+// =====================================
+
+/**
+ * 在当前数据库事务成功提交后，
+ * 向订阅该订单的客户端广播 Tracking 消息。
+ *
+ * 这样可以避免出现：
+ *
+ * WebSocket 已发送成功，
+ * 但数据库事务随后回滚。
+ */
+private void publishOrderTrackingAfterCommit(
+        Order order
+) {
+    OrderTrackingMessage message =
+            buildOrderTrackingMessage(
+                    order
+            );
+
+    String destination =
+            "/topic/orders/"
+                    + order.getId();
+
+    if (
+            TransactionSynchronizationManager
+                    .isActualTransactionActive()
+    ) {
+        TransactionSynchronizationManager
+                .registerSynchronization(
+                        new TransactionSynchronization() {
+
+                            @Override
+                            public void afterCommit() {
+                                messagingTemplate
+                                        .convertAndSend(
+                                                destination,
+                                                message
+                                        );
+                            }
+                        }
                 );
+
+        return;
     }
 
-    /**
-     * 查询当前用户，并验证当前用户是 Merchant。
-     */
-    private User getMerchantByEmail(
-            String email
-    ) {
-        User merchant =
-                getUserByEmail(email);
+        /*
+        * 如果方法未来在没有事务的上下文中调用，
+        * 则直接发送消息作为兜底。
+        */
+        messagingTemplate.convertAndSend(
+                destination,
+                message
+        );
+        }
 
-        if (
-                merchant.getRole()
-                        != UserRole.MERCHANT
+        /**
+         * 将 Order 转换为轻量级 WebSocket Tracking DTO。
+         *
+         * 当前阶段只广播订单状态。
+         * Driver 坐标将在配送模拟功能中补充。
+         */
+        private OrderTrackingMessage buildOrderTrackingMessage(
+                Order order
         ) {
-            throw new ConflictException(
-                    "Current user is not a merchant"
-            );
-        }
-
-        return merchant;
-    }
-
-    /**
-     * 查询当前用户，并验证当前用户是 Driver。
-     */
-    private User getDriverByEmail(
-            String email
-    ) {
-        User driver =
-                getUserByEmail(email);
-
-        if (
-                driver.getRole()
-                        != UserRole.DRIVER
-        ) {
-            throw new ConflictException(
-                    "Current user is not a driver"
-            );
-        }
-
-        return driver;
-    }
-
-    /**
-     * 查询当前 Merchant 所拥有的餐厅。
-     */
-    private Restaurant getRestaurantOwnedByMerchant(
-            User merchant
-    ) {
-        return restaurantRepository
-                .findByOwner_Id(
-                        merchant.getId()
-                )
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Restaurant not found for merchant: "
-                                        + merchant.getEmail()
-                        )
-                );
-    }
-
-    /**
-     * 查询订单，并验证订单属于当前登录用户。
-     *
-     * 对于不属于当前用户的订单同样返回 404，
-     * 避免泄露其他用户的订单是否存在。
-     */
-    private Order getOrderOwnedByUser(
-            Long orderId,
-            Long userId
-    ) {
-        if (orderId == null) {
-            throw new BadRequestException(
-                    "Order id is required"
-            );
-        }
-
-        Order order = orderRepository
-                .findById(orderId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Order not found with id: "
-                                        + orderId
-                        )
-                );
-
-        if (
-                !order
-                        .getUser()
-                        .getId()
-                        .equals(userId)
-        ) {
-            throw new ResourceNotFoundException(
-                    "Order not found with id: "
-                            + orderId
-            );
-        }
-
-        return order;
-    }
-
-    // =====================================
-    // Order state machine helper methods
-    // =====================================
-
-    /**
-     * Merchant 只负责餐厅处理阶段：
-     *
-     * PENDING -> ACCEPTED
-     * ACCEPTED -> PREPARING
-     * PREPARING -> READY_FOR_PICKUP
-     */
-    private boolean canMerchantTransition(
-            OrderStatus currentStatus,
-            OrderStatus newStatus
-    ) {
-        return switch (currentStatus) {
-            case PENDING ->
-                    newStatus
-                            == OrderStatus.ACCEPTED;
-
-            case ACCEPTED ->
-                    newStatus
-                            == OrderStatus.PREPARING;
-
-            case PREPARING ->
-                    newStatus
-                            == OrderStatus.READY_FOR_PICKUP;
-
-            case READY_FOR_PICKUP,
-                 OUT_FOR_DELIVERY,
-                 DELIVERED,
-                 CANCELLED -> false;
-        };
-    }
-
-    /**
-     * Driver 只负责配送阶段：
-     *
-     * READY_FOR_PICKUP -> OUT_FOR_DELIVERY
-     * OUT_FOR_DELIVERY -> DELIVERED
-     */
-    private boolean canDriverTransition(
-            OrderStatus currentStatus,
-            OrderStatus newStatus
-    ) {
-        return switch (currentStatus) {
-            case READY_FOR_PICKUP ->
-                    newStatus
-                            == OrderStatus.OUT_FOR_DELIVERY;
-
-            case OUT_FOR_DELIVERY ->
-                    newStatus
-                            == OrderStatus.DELIVERED;
-
-            case PENDING,
-                 ACCEPTED,
-                 PREPARING,
-                 DELIVERED,
-                 CANCELLED -> false;
-        };
-    }
-
-    // =====================================
-    // Response builder methods
-    // =====================================
-
-    /**
-     * 将 Order Entity 转换为 OrderResponse DTO。
-     */
-    private OrderResponse buildOrderResponse(
-            Order order
-    ) {
-        List<OrderItemResponse> itemResponses =
-                order.getItems()
-                        .stream()
-                        .map(
-                                this::buildOrderItemResponse
-                        )
-                        .toList();
-
-        return OrderResponse.builder()
+        return OrderTrackingMessage.builder()
                 .orderId(
                         order.getId()
-                )
-                .userId(
-                        order.getUser().getId()
-                )
-                .restaurantId(
-                        order.getRestaurant().getId()
-                )
-                .restaurantName(
-                        order.getRestaurant().getName()
-                )
-                .driverId(
-                        order.getDriver() == null
-                                ? null
-                                : order
-                                .getDriver()
-                                .getId()
                 )
                 .status(
                         order.getStatus()
                 )
-                .totalPrice(
-                        order.getTotalPrice()
-                )
-                .items(itemResponses)
-
-                // Delivery address snapshot
-                .deliveryRecipientName(
-                        order.getDeliveryRecipientName()
-                )
-                .deliveryPhone(
-                        order.getDeliveryPhone()
-                )
-                .deliveryStreet(
-                        order.getDeliveryStreet()
-                )
-                .deliveryCity(
-                        order.getDeliveryCity()
-                )
-                .deliveryState(
-                        order.getDeliveryState()
-                )
-                .deliveryZipCode(
-                        order.getDeliveryZipCode()
-                )
-
-                .createdAt(
-                        order.getCreatedAt()
-                )
-                .updatedAt(
-                        order.getUpdatedAt()
-                )
+                .driverLatitude(null)
+                .driverLongitude(null)
                 .build();
-    }
+        }
 
-    /**
-     * 将 OrderItem Entity 转换为 OrderItemResponse DTO。
-     */
-    private OrderItemResponse buildOrderItemResponse(
-            OrderItem orderItem
-    ) {
-        BigDecimal subtotal =
-                orderItem
-                        .getUnitPrice()
-                        .multiply(
-                                BigDecimal.valueOf(
-                                        orderItem.getQuantity()
+                // =====================================
+                // Response builder methods
+                // =====================================
+            /**
+                 * 将 Order Entity 转换为 OrderResponse DTO。
+                 */
+                private OrderResponse buildOrderResponse(
+                        Order order
+                ) {
+                List<OrderItemResponse> itemResponses =
+                        order.getItems()
+                                .stream()
+                                .map(
+                                        this::buildOrderItemResponse
                                 )
-                        );
+                                .toList();
 
-        return OrderItemResponse.builder()
-                .orderItemId(
-                        orderItem.getId()
-                )
-                .menuItemId(
-                        orderItem.getMenuItemId()
-                )
-                .menuItemName(
-                        orderItem.getMenuItemName()
-                )
-                .unitPrice(
-                        orderItem.getUnitPrice()
-                )
-                .quantity(
-                        orderItem.getQuantity()
-                )
-                .subtotal(subtotal)
-                .build();
-    }
+                return OrderResponse.builder()
+                        .orderId(
+                                order.getId()
+                        )
+                        .userId(
+                                order.getUser().getId()
+                        )
+                        .restaurantId(
+                                order.getRestaurant().getId()
+                        )
+                        .restaurantName(
+                                order.getRestaurant().getName()
+                        )
+                        .driverId(
+                                order.getDriver() == null
+                                        ? null
+                                        : order
+                                        .getDriver()
+                                        .getId()
+                        )
+                        .status(
+                                order.getStatus()
+                        )
+                        .totalPrice(
+                                order.getTotalPrice()
+                        )
+                        .items(
+                                itemResponses
+                        )
+
+                        // Delivery address snapshot
+                        .deliveryRecipientName(
+                                order.getDeliveryRecipientName()
+                        )
+                        .deliveryPhone(
+                                order.getDeliveryPhone()
+                        )
+                        .deliveryStreet(
+                                order.getDeliveryStreet()
+                        )
+                        .deliveryCity(
+                                order.getDeliveryCity()
+                        )
+                        .deliveryState(
+                                order.getDeliveryState()
+                        )
+                        .deliveryZipCode(
+                                order.getDeliveryZipCode()
+                        )
+
+                        .createdAt(
+                                order.getCreatedAt()
+                        )
+                        .updatedAt(
+                                order.getUpdatedAt()
+                        )
+                        .build();
+                }
+
+                /**
+                 * 将 OrderItem Entity 转换为 OrderItemResponse DTO。
+                 */
+                private OrderItemResponse buildOrderItemResponse(
+                        OrderItem orderItem
+                ) {
+                BigDecimal subtotal =
+                        orderItem
+                                .getUnitPrice()
+                                .multiply(
+                                        BigDecimal.valueOf(
+                                                orderItem.getQuantity()
+                                        )
+                                );
+
+                return OrderItemResponse.builder()
+                        .orderItemId(
+                                orderItem.getId()
+                        )
+                        .menuItemId(
+                                orderItem.getMenuItemId()
+                        )
+                        .menuItemName(
+                                orderItem.getMenuItemName()
+                        )
+                        .unitPrice(
+                                orderItem.getUnitPrice()
+                        )
+                        .quantity(
+                                orderItem.getQuantity()
+                        )
+                        .subtotal(
+                                subtotal
+                        )
+                        .build();
+                }
 }

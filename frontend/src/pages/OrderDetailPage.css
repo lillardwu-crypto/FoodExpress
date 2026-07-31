@@ -664,3 +664,43 @@
         text-align: left;
     }
 }
+
+.tracking-connection {
+    margin: 12px 0 0;
+
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.tracking-connection-dot {
+    width: 8px;
+    height: 8px;
+
+    border-radius: 50%;
+}
+
+.tracking-connected {
+    color: #078744;
+}
+
+.tracking-connected
+.tracking-connection-dot {
+    background-color: #16a05d;
+
+    box-shadow:
+        0 0 0 4px
+        rgba(22, 160, 93, 0.12);
+}
+
+.tracking-disconnected {
+    color: #777777;
+}
+
+.tracking-disconnected
+.tracking-connection-dot {
+    background-color: #aaaaaa;
+}

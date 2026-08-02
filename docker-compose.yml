@@ -1,0 +1,86 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: foodexpress-mysql
+
+    restart: unless-stopped
+
+    environment:
+      MYSQL_DATABASE: foodexpress
+      MYSQL_ROOT_PASSWORD: foodexpress_root_password
+
+    ports:
+      - "3307:3306"
+
+    volumes:
+      - foodexpress-mysql-data:/var/lib/mysql
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+    networks:
+      - foodexpress-network
+
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+
+    container_name: foodexpress-backend
+
+    restart: unless-stopped
+
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/foodexpress?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: foodexpress_root_password
+
+      JWT_SECRET: ${JWT_SECRET:-zalHxpADYkCsUXn7LMhwChv1q0zr55O4NGly1iB61jM=}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-3600000}
+
+    ports:
+      - "8080:8080"
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+    networks:
+      - foodexpress-network
+
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+
+    container_name: foodexpress-frontend
+
+    restart: unless-stopped
+
+    ports:
+      - "80:80"
+
+    depends_on:
+      - backend
+
+    networks:
+      - foodexpress-network
+
+
+volumes:
+  foodexpress-mysql-data:
+
+
+networks:
+  foodexpress-network:
+    driver: bridge

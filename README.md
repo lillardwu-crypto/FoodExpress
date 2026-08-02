@@ -1,69 +1,50 @@
 # 🍔 FoodExpress
 
-A full-stack food delivery platform inspired by Uber Eats, built with Spring Boot, React, MySQL, JWT Authentication, and WebSocket.
+A production-style full-stack food delivery platform inspired by Uber Eats.
 
-FoodExpress provides a complete online food ordering workflow, including customer ordering, merchant order management, delivery tracking, and real-time order status updates.
+FoodExpress provides a complete end-to-end food ordering experience, including customer ordering, merchant order management, driver delivery workflow, real-time order tracking, and live delivery visualization.
 
+Built with Java 21, Spring Boot, React, MySQL, WebSocket, and Docker.
+
+## 📐 System Architecture
+
+<p align="center">
+  <img src="docs/architecture.png" alt="FoodExpress Architecture" width="100%">
+</p>
 ---
 
-## Tech Stack
+# Overview
 
-### Backend
+FoodExpress is a production-oriented food delivery platform designed to demonstrate modern full-stack software engineering practices.
 
-- Java 21
-- Spring Boot 3
-- Spring Security
+Unlike a traditional CRUD application, FoodExpress models a real-world food delivery ecosystem with three independent roles:
+
+- Customer
+- Merchant
+- Driver
+
+The platform implements the complete delivery lifecycle from browsing restaurants to live order tracking.
+
+Key engineering highlights include:
+
+- Layered Backend Architecture
 - JWT Authentication
-- Spring Data JPA
-- Hibernate
-- MySQL
-- Maven
-
-### Frontend (Coming Soon)
-
-- React
-- TypeScript
-- Axios
-- React Router
-- Tailwind CSS
-
-### Realtime
-
-- WebSocket
-- STOMP
-
-### Map
-
-- Leaflet
-- OpenStreetMap
-- OpenRouteService
+- Role-Based Authorization
+- RESTful API Design
+- WebSocket Real-Time Communication
+- Interactive Delivery Tracking
+- Dockerized Deployment
+- Production-Oriented Project Structure
 
 ---
 
-# System Architecture
+# Demo Accounts
 
-```text
-                React Frontend
-                       │
-                       │ REST API
-                       ▼
-        Spring Boot Backend
-        ├──────── Authentication
-        ├──────── Restaurant
-        ├──────── Menu
-        ├──────── Cart
-        ├──────── Checkout
-        ├──────── Order
-        ├──────── Merchant
-        ├──────── Driver
-        └──────── WebSocket
-
-                       │
-                Spring Data JPA
-                       │
-                       ▼
-                    MySQL
-```
+| Role | Email | Password |
+|------|-------|----------|
+| Customer | day9test@example.com | password123 |
+| Merchant | merchant@example.com | password123 |
+| Driver | driver@example.com | password123 |
 
 ---
 
@@ -71,42 +52,100 @@ FoodExpress provides a complete online food ordering workflow, including custome
 
 ## Customer
 
-- Register
-- Login (JWT)
-- Browse restaurants
-- Browse menu
-- Add items to cart
-- View shopping cart
-- Manage delivery addresses
+- Secure JWT Authentication
+- Browse Restaurants
+- Restaurant Detail Page
+- Browse Menu Items
+- Shopping Cart
+- Address Management
 - Checkout
-- View order history
+- Order History
+- Order Details
+- Live Order Timeline
+- Real-Time Order Tracking
+- Delivery Map Animation
 
 ---
 
 ## Merchant
 
-- View restaurant orders
-- Update order status
-- Restaurant ownership validation
-- JWT authorization
-- Order state validation
+- Merchant Authentication
+- View Incoming Orders
+- Accept Orders
+- Update Order Status
+- Real-Time Customer Notifications
 
 ---
 
-## Driver (Coming Soon)
+## Driver
 
-- View available orders
-- Accept delivery orders
-- Update delivery status
-- Real-time delivery tracking
+- View Available Orders
+- Accept Delivery Orders
+- Update Delivery Status
+- Live Delivery Tracking
 
 ---
 
-## Admin (Future)
+## System
 
-- Restaurant management
-- User management
-- Statistics Dashboard
+- RESTful APIs
+- JWT Authentication
+- Role-Based Authorization
+- Global Exception Handling
+- WebSocket Notifications
+- Docker Deployment
+
+---
+
+# Tech Stack
+
+## Backend
+
+- Java 21
+- Spring Boot
+- Spring Security
+- JWT Authentication
+- Spring Data JPA
+- Hibernate
+- MySQL
+- WebSocket (STOMP + SockJS)
+- Maven
+
+---
+
+## Frontend
+
+- React
+- React Router
+- Axios
+- Leaflet
+- CSS3
+
+---
+
+## DevOps
+
+- Docker
+- Docker Compose
+- Nginx
+
+---
+
+## Tools
+
+- Git
+- GitHub
+- IntelliJ IDEA
+- VS Code
+- Postman
+
+---
+
+# System Architecture
+
+> Architecture Diagram
+
+*(Coming Soon)*
 
 ---
 
@@ -116,209 +155,29 @@ FoodExpress provides a complete online food ordering workflow, including custome
 FoodExpress
 │
 ├── backend
-│   ├── config
 │   ├── controller
-│   ├── dto
-│   ├── entity
-│   ├── exception
-│   ├── repository
-│   ├── security
 │   ├── service
-│   └── FoodExpressApplication
+│   ├── repository
+│   ├── entity
+│   ├── dto
+│   ├── config
+│   ├── security
+│   └── resources
 │
 ├── frontend
+│   ├── api
+│   ├── components
+│   ├── pages
+│   ├── services
+│   ├── hooks
+│   └── styles
 │
-└── docs
+└── docker-compose.yml
 ```
 
 ---
 
-# Database Design
-
-Main entities:
-
-```
-User
-Restaurant
-MenuItem
-Cart
-CartItem
-Order
-OrderItem
-Address
-```
-
-Relationships
-
-```
-User
-│
-├── Address
-│
-├── Cart
-│
-└── Order
-
-Restaurant
-│
-├── MenuItem
-│
-└── Order
-
-Order
-│
-└── OrderItem
-```
-
----
-
-# Authentication
-
-FoodExpress uses JWT Authentication.
-
-```
-Login
-    │
-    ▼
-
-Generate JWT
-
-    │
-
-Client stores Token
-
-    │
-
-Authorization Header
-
-    │
-
-Spring Security
-
-    │
-
-Authenticated User
-```
-
----
-
-# Order Workflow
-
-```
-Customer
-
-PENDING
-    │
-    ▼
-
-Merchant
-
-ACCEPTED
-    │
-    ▼
-
-PREPARING
-    │
-    ▼
-
-READY_FOR_PICKUP
-    │
-    ▼
-
-Driver
-
-OUT_FOR_DELIVERY
-    │
-    ▼
-
-DELIVERED
-```
-
----
-
-# Merchant Workflow
-
-```
-Merchant Login
-
-        │
-
-View Restaurant Orders
-
-        │
-
-Accept Order
-
-        │
-
-Preparing
-
-        │
-
-Ready For Pickup
-```
-
----
-
-# Business Rules
-
-## Shopping Cart
-
-- One active cart per user
-- One restaurant per cart
-- Restaurant must be OPEN
-- Menu item must be AVAILABLE
-
----
-
-## Checkout
-
-- Active cart cannot be empty
-- Delivery address must belong to current user
-- Order price is copied from menu item
-- Shopping cart becomes inactive after checkout
-
----
-
-## Merchant
-
-Merchant can only access:
-
-- Orders belonging to owned restaurant
-
-Allowed transitions
-
-```
-PENDING
-
-↓
-
-ACCEPTED
-
-↓
-
-PREPARING
-
-↓
-
-READY_FOR_PICKUP
-```
-
-Invalid transition
-
-```
-409 Conflict
-```
-
-Unauthorized restaurant
-
-```
-404 Not Found
-```
-
----
-
-# REST APIs
+# REST API
 
 ## Authentication
 
@@ -329,12 +188,11 @@ POST /api/auth/login
 
 ---
 
-## Restaurant
+## Restaurants
 
 ```
 GET /api/restaurants
 GET /api/restaurants/{id}
-GET /api/restaurants/{id}/menu
 ```
 
 ---
@@ -342,8 +200,10 @@ GET /api/restaurants/{id}/menu
 ## Cart
 
 ```
-POST /api/carts/items
-GET /api/carts
+GET    /api/cart
+POST   /api/cart/items
+PUT    /api/cart/items/{id}
+DELETE /api/cart/items/{id}
 ```
 
 ---
@@ -351,19 +211,21 @@ GET /api/carts
 ## Address
 
 ```
-POST   /api/users/{id}/addresses
-GET    /api/users/{id}/addresses
-PUT    /api/users/{id}/addresses/{id}/default
-DELETE /api/users/{id}/addresses/{id}
+GET    /api/addresses
+POST   /api/addresses
+PUT    /api/addresses/{id}
+DELETE /api/addresses/{id}
+PUT    /api/addresses/{id}/default
 ```
 
 ---
 
-## Order
+## Orders
 
 ```
 POST /api/orders
-GET  /api/orders
+GET  /api/orders/history
+GET  /api/orders/{id}
 ```
 
 ---
@@ -371,66 +233,158 @@ GET  /api/orders
 ## Merchant
 
 ```
-GET   /api/merchant/orders
-PATCH /api/merchant/orders/{id}/status
+GET /api/merchant/orders
+PUT /api/merchant/orders/{id}/status
 ```
 
 ---
 
 ## Driver
 
-Coming Soon
+```
+GET /api/driver/orders
+PUT /api/driver/orders/{id}/accept
+PUT /api/driver/orders/{id}/status
+```
 
 ---
 
-# Current Progress
+# Database Design
 
-## Completed
+Main Entities
 
-- JWT Authentication
-- Spring Security
-- Restaurant Module
-- Menu Module
-- Shopping Cart Module
-- Address Module
-- Checkout Module
-- Order Module
-- Merchant Module
+- Users
+- Restaurants
+- MenuItems
+- Cart
+- CartItems
+- Orders
+- OrderItems
+- Addresses
+
+> ER Diagram
+
+*(Coming Soon)*
 
 ---
 
-## In Progress
+# Order Workflow
 
-- Driver Module
+```
+PENDING
+      │
+      ▼
+PREPARING
+      │
+      ▼
+READY_FOR_PICKUP
+      │
+      ▼
+OUT_FOR_DELIVERY
+      │
+      ▼
+DELIVERED
+```
+
+---
+
+# Real-Time Order Tracking
+
+FoodExpress uses Spring WebSocket (STOMP + SockJS) to provide real-time order tracking.
+
+Whenever a merchant or driver updates an order status, subscribed customers immediately receive live updates without refreshing the page.
+
+Real-time features include:
+
+- Live Order Timeline
+- Driver Delivery Animation
+- Automatic Status Synchronization
+
+---
+
+# Docker Deployment
+
+Run the complete application with Docker Compose.
+
+```bash
+docker compose up --build
+```
+
+Services
+
+- MySQL
+- Spring Boot Backend
 - React Frontend
+- Nginx Reverse Proxy
 
 ---
 
-## Planned
+# Local Development
 
-- WebSocket
-- Live Delivery Tracking
-- Map Integration
-- Payment Simulation
-- Notification System
+## Backend
+
+```bash
+cd backend
+
+mvn spring-boot:run
+```
+
+---
+
+## Frontend
+
+```bash
+cd frontend
+
+npm install
+
+npm run dev
+```
 
 ---
 
 # Future Improvements
 
-- Redis Cache
-- Docker
-- CI/CD
-- AWS Deployment
-- Kubernetes
-- Elasticsearch
-- Recommendation System
+- Stripe Payment Integration
+- Email Notifications
+- Push Notifications
+- Admin Dashboard
+- Restaurant Analytics
+- Route Optimization
+- Kubernetes Deployment
+- GitHub Actions CI/CD
+- Cloud Deployment (AWS)
 
 ---
 
 # Screenshots
 
-Coming Soon
+- Login
+- Home Page
+- Restaurant Details
+- Shopping Cart
+- Checkout
+- Order History
+- Order Timeline
+- Merchant Dashboard
+- Driver Dashboard
+- Delivery Tracking Map
+
+*(Screenshots Coming Soon)*
+
+---
+
+# Highlights
+
+- Production-style layered architecture
+- Secure JWT authentication
+- Role-based authorization
+- RESTful API design
+- Real-time WebSocket communication
+- Interactive delivery tracking
+- Dockerized deployment
+- Clean project structure
+- Maintainable and scalable codebase
 
 ---
 

@@ -1,8 +1,7 @@
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 
-const WEBSOCKET_URL =
-    "http://localhost:8080/ws";
+const WEBSOCKET_URL = "/ws";
 
 /**
  * Creates a STOMP client for FoodExpress

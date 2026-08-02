@@ -141,11 +141,38 @@ Key engineering highlights include:
 
 ---
 
-# System Architecture
+# 🔐 JWT Authentication
 
-> Architecture Diagram
+FoodExpress secures all protected APIs using **Spring Security** and **JSON Web Tokens (JWT)**.
 
-*(Coming Soon)*
+After successful authentication, the backend generates a signed JWT containing the user's identity and role. The client stores the token and automatically attaches it to subsequent API requests using the `Authorization: Bearer <token>` header.
+
+Incoming requests are intercepted by the JWT authentication filter, where the token is validated before access is granted to protected resources.
+
+<p align="center">
+    <img src="docs/jwt-authentication-flow.png"
+         alt="JWT Authentication Flow"
+         width="100%">
+</p>
+
+### Authentication Process
+
+1. User submits login credentials.
+2. Spring Security authenticates the request.
+3. A signed JWT is generated.
+4. The client stores the token.
+5. Every protected request includes the JWT.
+6. The backend validates the token.
+7. Access is granted based on the user's role.
+
+### Security Features
+
+- Spring Security
+- JWT Authentication
+- BCrypt Password Hashing
+- Role-Based Authorization
+- Stateless Authentication
+- Authentication Filter
 
 ---
 

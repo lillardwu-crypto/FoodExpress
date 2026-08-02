@@ -251,6 +251,12 @@ PUT /api/driver/orders/{id}/status
 
 # Database Design
 
+FoodExpress uses a relational database designed around the core business entities, including users, restaurants, orders, carts, and addresses. The schema follows normalized relationships to support role-based operations, order management, and delivery tracking.
+
+<p align="center">
+  <img src="docs/er-diagram.png" width="100%">
+</p>
+
 Main Entities
 
 - Users
@@ -270,6 +276,12 @@ Main Entities
 
 # Order Workflow
 
+The following diagram illustrates the complete order lifecycle from customer checkout to successful delivery.
+
+<p align="center">
+  <img src="docs/order-workflow.png" width="100%">
+</p>
+
 ```
 PENDING
       │
@@ -288,17 +300,34 @@ DELIVERED
 
 ---
 
-# Real-Time Order Tracking
+# 📡 Real-Time Order Tracking
 
-FoodExpress uses Spring WebSocket (STOMP + SockJS) to provide real-time order tracking.
+FoodExpress uses **Spring WebSocket (STOMP over SockJS)** to provide real-time order status synchronization between customers, merchants, and drivers.
 
-Whenever a merchant or driver updates an order status, subscribed customers immediately receive live updates without refreshing the page.
+Whenever a merchant or driver updates an order status through the REST API, the backend persists the change, publishes a WebSocket event, and broadcasts the update to subscribed clients. React automatically refreshes the Order Timeline and Delivery Tracking components without requiring a page reload.
 
-Real-time features include:
+<p align="center">
+    <img src="docs/websocket-architecture.png"
+         alt="WebSocket Real-Time Architecture"
+         width="100%">
+</p>
 
-- Live Order Timeline
-- Driver Delivery Animation
-- Automatic Status Synchronization
+### WebSocket Topics
+
+| Topic | Description |
+|-------|-------------|
+| `/topic/orders/{orderId}` | Customer subscribes to a specific order |
+| `/topic/merchant/orders` | Merchant receives restaurant order updates |
+| `/topic/driver/orders/assigned` | Driver receives assigned deliveries |
+
+### Technology
+
+- Spring WebSocket
+- STOMP Protocol
+- SockJS
+- SimpMessagingTemplate
+- Topic-based Publish / Subscribe
+- Automatic React UI Updates
 
 ---
 
